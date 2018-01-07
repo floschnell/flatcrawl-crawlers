@@ -56,7 +56,7 @@ fn main() {
         barrier.wait();
 
         // filter results for duplicates
-        let mut flats = Arc::try_unwrap(guarded_flats)
+        let flats = Arc::try_unwrap(guarded_flats)
             .unwrap()
             .into_inner()
             .unwrap();
@@ -74,8 +74,7 @@ fn main() {
         println!("Will be sending {} flats ...", filtered_flats.len());
         send_results(&conf.amqp_config, amqp_host_ip, &filtered_flats);
         println!("Done.");
-        last_flats = Vec::new();
-        last_flats.append(&mut flats);
+        last_flats = flats.to_vec();
 
         // pause for 5 minutes
         std::thread::sleep(std::time::Duration::from_secs(300));
