@@ -1,0 +1,13 @@
+# this is a sample configuration file
+# the program will pick it up, if it is named config.toml
+
+# number of threads on which the crawlers will be executed
+thread_count = 2
+
+# amqp broker details
+# you can point this for instance to a RabbitMQ broker
+[amqp]
+host = "yourdomain.de"
+username = "username"
+password = "password"
+queue = "flats"
