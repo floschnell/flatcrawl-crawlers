@@ -29,6 +29,7 @@ use crawlers::Crawler;
 use models::Flat;
 
 fn main() {
+    let mut init_run = true;
     let conf = configuration::read();
     let amqp_host = conf.amqp_config.host.to_owned();
     let thread_count = conf.thread_count as usize;
@@ -56,24 +57,35 @@ fn main() {
         barrier.wait();
 
         // filter results for duplicates
+        let mut filtered_flats: Vec<_> = Vec::new();
         let flats = Arc::try_unwrap(guarded_flats)
             .unwrap()
             .into_inner()
             .unwrap();
         println!("Successfully parsed {} flats.", flats.len());
-        let mut iterable_last_flats = last_flats.into_iter();
-        let filtered_flats: Vec<_> = flats
-            .to_vec()
-            .into_iter()
-            .filter(|flat| {
-                iterable_last_flats.all(|old| old.id().unwrap() != flat.id().unwrap())
-            })
-            .collect();
+        for flat in flats.to_vec() {
+            let has_been_sent = last_flats
+                .to_vec()
+                .into_iter()
+                .any(|previous| previous.id().unwrap() == flat.id().unwrap());
+            if !has_been_sent {
+                filtered_flats.push(flat);
+            }
+        }
 
-        // only send new flats
-        println!("Will be sending {} flats ...", filtered_flats.len());
-        send_results(&conf.amqp_config, amqp_host_ip, &filtered_flats);
-        println!("Done.");
+        // in the first run, we will collect
+        if init_run {
+            init_run = false;
+            println!("During initial run, we do not send flats ...");
+        } else {
+            // only send new flats
+            println!("Will be sending {} flats ...", filtered_flats.len());
+            send_results(&conf.amqp_config, amqp_host_ip, &filtered_flats);
+            println!("Done.");
+        }
+
+        // remember the flats so we can compare against them
+        // during the next run ...
         last_flats = flats.to_vec();
 
         // pause for 5 minutes
