@@ -1,4 +1,4 @@
-# flatcrawl-crawler
+# flatcrawl-crawlers
 
 This repository is part of my flatcrawl project. It contains a Rust implementation of crawlers/scrapers for different real estate websites. It will scan those websites in scheduled cycles and extract information on new flats. Those new flats are then parsed into a consistent layout. Finally they are sent away for further processing.
 
