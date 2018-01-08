@@ -8,6 +8,8 @@ I chose Rust for this project, because I wanted to learn the language and also i
 
 The purpose of the project is to **collect flats from different rental sites** and **expose them in a consistent shape**. Eventually it lets users define **custom searches** and provides them with **instant updates on new matching flats**.
 
+**Clarification**: flats are *not* stored on the server. The purpose is not to create a competing portal, but to extend usability and help users find the right flat quickly by receiving updates from several sites without the hassle to setup and maintain different searches.
+
 ## Infrastructure
 
 Flats that are found by this tool and its set of crawlers will be transmitted via AMQP to a message broker (in my case RabbitMQ) to be picked up by different processors. Those processors can be found in their [own repository](https://github.com/floschnell/flatcrawl-processors) and can be anything from email notifications to instant messaging bots. Currently there's only an implementation of a telegram bot, but you could imagine all kinds of different services that will listen to the queue and push new flats to interested users.
