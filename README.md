@@ -1,8 +1,12 @@
 # flatcrawl-crawlers
 
-This repository is part of my flatcrawl project. It contains a Rust implementation of crawlers/scrapers for different real estate websites. It will scan those websites in scheduled cycles and extract information on new flats. Those new flats are then parsed into a consistent layout. Finally they are sent away for further processing.
+This repository is part of my **flatcrawl project**. It contains a Rust implementation of crawlers/scrapers for different real estate websites. It will scan those websites in scheduled cycles and extract information on new flats. Those new flats are then parsed into a consistent layout and sent away for further processing.
 
 I chose Rust for this project, because I wanted to learn the language and also it seemed to be a good fit because of its capabilities like speed and thread safetiness.
+
+## The flatcrawl project
+
+The purpose of the project is to **collect flats from different rental sites** and **expose them in a consistent shape**. Eventually it lets users define **custom searches** and provides them with **instant updates on new matching flats**.
 
 ## Infrastructure
 
