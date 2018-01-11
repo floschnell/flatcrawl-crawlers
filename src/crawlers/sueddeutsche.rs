@@ -43,31 +43,48 @@ impl Crawler for Sueddeutsche {
     "#idHitContent .hitRow"
   }
 
-  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error> {
-    let rent = Self::get_text(&result, ".hitPrice")?
-      .replace("&nbsp;", " ");
+  fn transform_result<'a>(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error> {
+    let rent = Self::get_text(&result, ".hitPrice")?.replace("&nbsp;", " ");
     let squaremeters = Self::get_text(&result, ".hitRoomsDiv")?
       .split(", ")
-      .collect::<Vec<_>>()[0].to_owned();
+      .map(|s| s.to_owned())
+      .collect::<Vec<_>>()
+      .get(1)
+      .map(|s| s.to_owned());
     let rooms = Self::get_text(&result, ".hitRoomsDiv")?
       .split(", ")
-      .collect::<Vec<_>>()[1].to_owned();
+      .map(|s| s.to_owned())
+      .collect::<Vec<_>>()
+      .get(1)
+      .map(|s| s.to_owned());
     let title = Self::get_text(&result, ".hitHeadline")?
       .replace("\t", "")
       .replace("\n", "");
     let address = Self::get_text(&result, ".hitRegionTxt")?
       .replace("\t", "")
       .split("\n")
-      .collect::<Vec<_>>()[2].to_owned();
-    let externalid = Self::get_attr(&result, "id")?
-      .replace("idHitRowList", "");
-    Ok(FlatData {
-      rent: Self::parse_number(rent)?,
-      squaremeters: Self::parse_number(squaremeters)?,
-      address,
-      title,
-      rooms: Self::parse_number(rooms)?,
-      externalid,
-    })
+      .map(|s| s.to_owned())
+      .collect::<Vec<_>>()
+      .get(2)
+      .map(|s| s.to_owned());
+    let externalid = Self::get_attr(&result, "id")?.replace("idHitRowList", "");
+
+    let err_msg = format!(
+      "Information is incomplete: {:?}, {:?}, {:?}!",
+      squaremeters,
+      rooms,
+      address
+    );
+    match (squaremeters, rooms, address) {
+      (Some(sqm), Some(rms), Some(addr)) => Ok(FlatData {
+        rent: Self::parse_number(rent)?,
+        squaremeters: Self::parse_number(sqm)?,
+        address: addr.to_owned(),
+        title,
+        rooms: Self::parse_number(rms.to_owned())?,
+        externalid,
+      }),
+      _ => Err(Error { message: err_msg }),
+    }
   }
 }
