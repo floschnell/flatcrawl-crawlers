@@ -74,9 +74,15 @@ pub trait Crawler: Send + Sync {
     let mut url = "http://".to_owned();
     url.push_str(self.host());
     url.push_str(self.path());
-    println!("using url: {}", url);
+
+    self.log(format!(">> sending request to url '{}' ... ", url));
     let mut response = reqwest::get(url.as_str())?;
+    self.log(format!("<< received response."));
+
+    self.log(format!("parsing document tree ..."));
     let document = kuchiki::parse_html().from_utf8().read_from(&mut response)?;
+    self.log(format!("document parsed successfully."));
+
     match document.select(self.selector()) {
       Ok(x) => Ok(x),
       Err(()) => Err(Error {
@@ -125,5 +131,9 @@ pub trait Crawler: Send + Sync {
         message: format!("No number found in '{}'!", rent_as_str),
       }),
     }
+  }
+
+  fn log(&self, message: String) {
+    println!("{}: {}", self.name(), message);
   }
 }
