@@ -51,7 +51,7 @@ impl Crawler for ImmoScout {
       ".result-list-entry__criteria dl:nth-child(3) dd .onlyLarge",
     )?;
     let title = Self::get_text(&result, ".result-list-entry__brand-title")?;
-    let address = Self::get_text(&result, ".result-list-entry__address a")?;
+    let address = Self::get_text(&result, ".result-list-entry__map-link div")?;
     let externalid = Self::get_attr(&result, "data-obid")?.trim().to_owned();
     Ok(FlatData {
       rent: Self::parse_number(rent)?,
