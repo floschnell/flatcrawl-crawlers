@@ -34,9 +34,8 @@ pub fn geocode(nominatim_url: &String, address: &String) -> Result<Coordinate, E
   let mut url = url::Url::parse(nominatim_url)?;
   url.query_pairs_mut().append_pair("q", address.as_str());
   url.query_pairs_mut().append_pair("format", "json");
-  println!("Geocoding: {} ...", url);
+
   let response: Vec<Coordinate> = reqwest::get(url.as_str())?.json()?;
-  println!("Answer: {:?}.", response);
 
   if response.len() >= 1 {
     Ok(response[0].clone())
