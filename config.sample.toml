@@ -4,6 +4,9 @@
 # number of threads on which the crawlers will be executed
 thread_count = 2
 
+# address of the geocoding service
+nominatim_url = "https://nominatim.openstreetmap.org/search"
+
 # amqp broker details
 # you can point this for instance to a RabbitMQ broker
 [amqp]

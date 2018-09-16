@@ -9,6 +9,7 @@ pub struct AmqpConfig {
 
 pub struct CrawlerConfig {
   pub thread_count: i32,
+  pub nominatim_url: String,
   pub amqp_config: AmqpConfig,
 }
 
@@ -20,9 +21,11 @@ pub fn read() -> CrawlerConfig {
   let username = config.get("amqp.username").unwrap();
   let password = config.get("amqp.password").unwrap();
   let thread_count: String = config.get("thread_count").unwrap();
+  let nominatim_url: String = config.get("nominatim_url").unwrap();
 
   CrawlerConfig {
     thread_count: thread_count.parse().unwrap(),
+    nominatim_url,
     amqp_config: AmqpConfig {
       host,
       queue,
