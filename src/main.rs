@@ -30,10 +30,14 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 
 fn main() {
-  let mut init_run = true;
   let conf = configuration::read();
+  let mut init_run = if conf.test { false } else { true };
   let amqp_host = conf.amqp_config.host.to_owned();
   let thread_count = conf.thread_count as usize;
+
+  if conf.test {
+    println!("----- Running in TEST mode! -----");
+  }
 
   let barrier = Arc::new(Barrier::new(thread_count + 1));
   let amqp_host_ip = lookup_host(amqp_host.as_str()).unwrap()[0];
@@ -48,8 +52,9 @@ fn main() {
       let inner_guarded_crawlers = guarded_crawlers.clone();
       let inner_guarded_flats = guarded_flats.clone();
       let inner_barrier = barrier.clone();
+      let cap_conf = conf.clone();
       thread::spawn(move || {
-        run_thread(inner_guarded_crawlers, inner_guarded_flats, i);
+        run_thread(inner_guarded_crawlers, inner_guarded_flats, i, &cap_conf);
         inner_barrier.wait();
       });
     }
@@ -83,9 +88,16 @@ fn main() {
       let geocoded_flats = geocode_flats(&filtered_flats, &conf);
 
       // only send new flats
-      println!("Will be sending {} flats ...", geocoded_flats.len());
-      send_results(&conf.amqp_config, amqp_host_ip, &geocoded_flats);
-      println!("Done.");
+      if conf.test {
+        for flat in geocoded_flats {
+          println!("Flat that would be send: {:?}", flat);
+          println!("Run finished.");
+        }
+      } else {
+        println!("Will be sending {} flats ...", geocoded_flats.len());
+        send_results(&conf.amqp_config, amqp_host_ip, &geocoded_flats);
+        println!("Done.");
+      }
     }
 
     // remember the flats so we can compare against them
@@ -130,6 +142,7 @@ fn run_thread(
   guarded_crawlers: Arc<Mutex<Vec<Box<Crawler>>>>,
   guarded_flats: Arc<Mutex<Vec<Flat>>>,
   thread_number: usize,
+  conf: &configuration::CrawlerConfig,
 ) {
   loop {
     let crawler_opt = get_crawler(&guarded_crawlers);
@@ -142,7 +155,13 @@ fn run_thread(
       );
       let flats_result = crawler.crawl();
       if flats_result.is_ok() {
-        add_flats(&guarded_flats, &mut flats_result.unwrap());
+        let mut flats = flats_result.unwrap();
+        if conf.test {
+          for ref flat in &flats {
+            println!("Parsed flat: {:?}", flat);
+          }
+        }
+        add_flats(&guarded_flats, &mut flats);
       } else {
         println!("error: {:?}", flats_result.err().unwrap().message).to_owned();
       }
@@ -168,7 +187,7 @@ fn send_results(
           let mut options = ConnectionOptions::default();
           options.username = config.username.to_owned();
           options.password = config.password.to_owned();
-          lapin::client::Client::connect(stream, &options)
+          lapin::client::Client::connect(stream, options)
         })
         .and_then(|(client, _)| client.create_channel())
         .and_then(|channel| {
@@ -176,8 +195,8 @@ fn send_results(
             channel.basic_publish(
               "",
               config.queue.to_owned().as_str(),
-              serde_json::to_string(&flat).unwrap().as_bytes(),
-              &BasicPublishOptions::default(),
+              Vec::from(serde_json::to_string(&flat).unwrap().as_bytes()),
+              BasicPublishOptions::default(),
               BasicProperties::default(),
             );
           }

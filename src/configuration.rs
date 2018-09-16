@@ -1,5 +1,6 @@
 use config::{Config, File};
 
+#[derive(Clone, Debug)]
 pub struct AmqpConfig {
   pub host: String,
   pub queue: String,
@@ -7,7 +8,9 @@ pub struct AmqpConfig {
   pub password: String,
 }
 
+#[derive(Clone, Debug)]
 pub struct CrawlerConfig {
+  pub test: bool,
   pub thread_count: i32,
   pub nominatim_url: String,
   pub amqp_config: AmqpConfig,
@@ -16,6 +19,7 @@ pub struct CrawlerConfig {
 pub fn read() -> CrawlerConfig {
   let mut config = Config::new();
   config.merge(File::with_name("config")).unwrap();
+  let test = config.get("test").unwrap();
   let host = config.get("amqp.host").unwrap();
   let queue = config.get("amqp.queue").unwrap();
   let username = config.get("amqp.username").unwrap();
@@ -24,6 +28,7 @@ pub fn read() -> CrawlerConfig {
   let nominatim_url: String = config.get("nominatim_url").unwrap();
 
   CrawlerConfig {
+    test,
     thread_count: thread_count.parse().unwrap(),
     nominatim_url,
     amqp_config: AmqpConfig {

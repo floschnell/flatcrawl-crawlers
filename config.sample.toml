@@ -7,6 +7,10 @@ thread_count = 2
 # address of the geocoding service
 nominatim_url = "https://nominatim.openstreetmap.org/search"
 
+# if this is a testrun
+# during a testrun no results will be sent
+test = false
+
 # amqp broker details
 # you can point this for instance to a RabbitMQ broker
 [amqp]

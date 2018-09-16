@@ -3,12 +3,12 @@ extern crate regex;
 extern crate reqwest;
 extern crate std;
 
-use kuchiki::traits::*;
+use self::regex::Regex;
 use kuchiki::iter::{Descendants, Elements, Select};
+use kuchiki::traits::*;
 use kuchiki::{ElementData, NodeDataRef};
 use models::{Cities, Flat, FlatData};
 use std::ops::Deref;
-use self::regex::Regex;
 
 #[derive(Debug)]
 pub struct Error {
@@ -123,9 +123,8 @@ pub trait Crawler: Send + Sync {
     match rent_regex
       .captures_iter(rent_as_str.as_str())
       .next()
-      .and_then(|capture| {
-        Some(capture[0].replace(".", "").replace(",", "."))
-      }) {
+      .and_then(|capture| Some(capture[0].replace(".", "").replace(",", ".")))
+    {
       Some(rent) => Ok(rent.parse()?),
       None => Err(Error {
         message: format!("No number found in '{}'!", rent_as_str),
