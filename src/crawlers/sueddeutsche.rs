@@ -1,4 +1,5 @@
 extern crate kuchiki;
+extern crate regex;
 extern crate reqwest;
 extern crate std;
 
@@ -11,6 +12,7 @@ pub struct Sueddeutsche {
   pub host: String,
   pub path: String,
   pub city: Cities,
+  pub brackets: regex::Regex,
 }
 
 impl Sueddeutsche {
@@ -19,6 +21,7 @@ impl Sueddeutsche {
       city,
       host: host.to_owned(),
       path: path.to_owned(),
+      brackets: regex::Regex::new(r"\s*\([^)]*\)").unwrap(),
     };
   }
 }
@@ -66,7 +69,7 @@ impl Crawler for Sueddeutsche {
       (&Some(squaremeters), &Some(rooms), &Some(address)) => Ok(FlatData {
         rent: Self::parse_number(rent)?,
         squaremeters: Self::parse_number(squaremeters.deref().to_owned())?,
-        address: address.deref().to_owned(),
+        address: self.brackets.replace_all(address.deref(), "").into_owned(),
         title,
         rooms: Self::parse_number(rooms.deref().to_owned())?,
         externalid,
@@ -74,9 +77,7 @@ impl Crawler for Sueddeutsche {
       _ => Err(Error {
         message: format!(
           "Information is incomplete: {:?}, {:?}, {:?}!",
-          squaremeters_opt,
-          rooms_opt,
-          address_opt
+          squaremeters_opt, rooms_opt, address_opt
         ),
       }),
     }

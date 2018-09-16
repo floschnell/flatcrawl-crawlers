@@ -1,4 +1,5 @@
 extern crate kuchiki;
+extern crate regex;
 extern crate reqwest;
 extern crate std;
 
@@ -10,6 +11,7 @@ pub struct ImmoWelt {
   pub host: String,
   pub path: String,
   pub city: Cities,
+  pub brackets: regex::Regex,
 }
 
 impl ImmoWelt {
@@ -18,6 +20,7 @@ impl ImmoWelt {
       city,
       host: host.to_owned(),
       path: path.to_owned(),
+      brackets: regex::Regex::new(r"\s*\([^)]*\)").unwrap(),
     };
   }
 }
@@ -54,11 +57,12 @@ impl Crawler for ImmoWelt {
       .filter(|part| part.len() > 0)
       .collect::<Vec<_>>()
       .join(", ");
+    let cleaned_address = self.brackets.replace_all(&address, "").into_owned();
     let externalid = Self::get_attr(&result, "data-estateid")?;
     Ok(FlatData {
       rent: Self::parse_number(rent)?,
       squaremeters: Self::parse_number(squaremeters)?,
-      address,
+      address: cleaned_address,
       title,
       rooms: Self::parse_number(rooms)?,
       externalid,
