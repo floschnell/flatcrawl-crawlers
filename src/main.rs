@@ -195,7 +195,7 @@ fn send_results(
             channel.basic_publish(
               "",
               config.queue.to_owned().as_str(),
-              Vec::from(serde_json::to_string(&flat).unwrap().as_bytes()),
+              serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
               BasicPublishOptions::default(),
               BasicProperties::default(),
             );
