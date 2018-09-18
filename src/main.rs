@@ -192,13 +192,18 @@ fn send_results(
         .and_then(|(client, _)| client.create_channel())
         .and_then(|channel| {
           for flat in results {
-            channel.basic_publish(
-              "",
-              config.queue.to_owned().as_str(),
-              serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
-              BasicPublishOptions::default(),
-              BasicProperties::default(),
-            );
+            channel
+              .basic_publish(
+                "",
+                config.queue.to_owned().as_str(),
+                serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
+                BasicPublishOptions::default(),
+                BasicProperties::default(),
+              )
+              .map(|confirmation| println!("publish got confirmation: {:?}", confirmation))
+              .and_then(|_| channel.close(200, "Bye"))
+              .wait()
+              .expect("Ok");
           }
           Ok(())
         }),
