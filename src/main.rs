@@ -9,7 +9,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate tokio_core;
+extern crate tokio;
 
 mod configuration;
 mod crawlers;
@@ -26,21 +26,37 @@ use std::boxed::Box;
 use std::sync::Mutex;
 use std::sync::{Arc, Barrier};
 use std::thread;
-use tokio_core::net::TcpStream;
-use tokio_core::reactor::Core;
+use tokio::net::TcpStream;
+use tokio::runtime::Runtime;
 
 fn main() {
   let conf = configuration::read();
   let mut init_run = if conf.test { false } else { true };
   let amqp_host = conf.amqp_config.host.to_owned();
   let thread_count = conf.thread_count as usize;
+  let amqp_host_ip = lookup_host(amqp_host.as_str()).unwrap()[0];
 
   if conf.test {
     println!("----- Running in TEST mode! -----");
+    let flats = vec![Flat {
+      city: models::Cities::Munich,
+      source: "immoscout".to_owned(),
+      location: None,
+      data: Some(models::FlatData {
+        address: "Some address".to_owned(),
+        externalid: "4".to_owned(),
+        rent: 100.0,
+        rooms: 2.0,
+        squaremeters: 60.0,
+        title: "Test Flat".to_owned(),
+      }),
+      date: 0,
+    }];
+    println!("flat: {}", serde_json::to_string(&flats[0]).unwrap());
+    send_results(&conf.amqp_config, amqp_host_ip, flats);
   }
 
   let barrier = Arc::new(Barrier::new(thread_count + 1));
-  let amqp_host_ip = lookup_host(amqp_host.as_str()).unwrap()[0];
   let mut last_flats = Vec::<Flat>::new();
   loop {
     let crawlers = crawlers::get_crawlers();
@@ -95,7 +111,7 @@ fn main() {
         }
       } else {
         println!("Will be sending {} flats ...", geocoded_flats.len());
-        send_results(&conf.amqp_config, amqp_host_ip, &geocoded_flats);
+        send_results(&conf.amqp_config, amqp_host_ip, geocoded_flats);
         println!("Done.");
       }
     }
@@ -171,31 +187,29 @@ fn run_thread(
   }
 }
 
-fn send_results(
-  config: &configuration::AmqpConfig,
-  ip_addr: std::net::IpAddr,
-  results: &Vec<Flat>,
-) {
-  let mut core = Core::new().unwrap();
-  let handle = core.handle();
+fn send_results(config: &configuration::AmqpConfig, ip_addr: std::net::IpAddr, results: Vec<Flat>) {
   let socket = std::net::SocketAddr::new(ip_addr, 5672);
+  let username = config.username.to_owned();
+  let password = config.password.to_owned();
+  let queue = config.queue.to_owned();
 
-  core
-    .run(
-      TcpStream::connect(&socket, &handle)
+  Runtime::new()
+    .unwrap()
+    .block_on_all(
+      TcpStream::connect(&socket)
         .and_then(|stream| {
           let mut options = ConnectionOptions::default();
-          options.username = config.username.to_owned();
-          options.password = config.password.to_owned();
+          options.username = username;
+          options.password = password;
           lapin::client::Client::connect(stream, options)
         })
         .and_then(|(client, _)| client.create_channel())
-        .and_then(|channel| {
+        .and_then(move |channel| {
           for flat in results {
             channel
               .basic_publish(
                 "",
-                config.queue.to_owned().as_str(),
+                queue.clone().as_str(),
                 serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
                 BasicPublishOptions::default(),
                 BasicProperties::default(),
@@ -206,7 +220,9 @@ fn send_results(
               .expect("Ok");
           }
           Ok(())
-        }),
+        })
+        .map_err(|err| eprintln!("error: {:?}", err)),
     )
-    .unwrap();
+    .map_err(|err| eprintln!("error: {:?}", err))
+    .expect("Could not send flats.");
 }
