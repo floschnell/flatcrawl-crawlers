@@ -53,7 +53,7 @@ fn main() {
       date: 0,
     }];
     println!("flat: {}", serde_json::to_string(&flats[0]).unwrap());
-    send_results(&conf.amqp_config, amqp_host_ip, flats);
+    // send_results(&conf.amqp_config, amqp_host_ip, flats);
   }
 
   let barrier = Arc::new(Barrier::new(thread_count + 1));
