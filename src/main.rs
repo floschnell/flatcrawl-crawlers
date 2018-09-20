@@ -19,8 +19,9 @@ mod models;
 use crawlers::Crawler;
 use dns_lookup::lookup_host;
 use futures::Future;
-use lapin::channel::{BasicProperties, BasicPublishOptions};
+use lapin::channel::{BasicProperties, BasicPublishOptions, ExchangeDeclareOptions};
 use lapin::client::ConnectionOptions;
+use lapin::types::FieldTable;
 use models::Flat;
 use std::boxed::Box;
 use std::sync::Mutex;
@@ -205,21 +206,27 @@ fn send_results(config: &configuration::AmqpConfig, ip_addr: std::net::IpAddr, r
         })
         .and_then(|(client, _)| client.create_channel())
         .and_then(move |channel| {
-          for flat in results {
-            channel
-              .basic_publish(
-                "",
-                queue.clone().as_str(),
-                serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
-                BasicPublishOptions::default(),
-                BasicProperties::default(),
-              )
-              .map(|confirmation| println!("publish got confirmation: {:?}", confirmation))
-              .and_then(|_| channel.close(200, "Bye"))
-              .wait()
-              .expect("Ok");
-          }
-          Ok(())
+          channel
+            .exchange_declare(
+              "flats_exchange",
+              "fanout",
+              ExchangeDeclareOptions::default(),
+              FieldTable::new(),
+            )
+            .and_then(move |_| {
+              for flat in results {
+                channel
+                  .basic_publish(
+                    "flats_exchange",
+                    format!("flats_{:?}", flat.city),
+                    serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
+                    BasicPublishOptions::default(),
+                    BasicProperties::default(),
+                  )
+                  .wait();
+              }
+              Ok(())
+            })
         })
         .map_err(|err| eprintln!("error: {:?}", err)),
     )
