@@ -218,12 +218,13 @@ fn send_results(config: &configuration::AmqpConfig, ip_addr: std::net::IpAddr, r
                 channel
                   .basic_publish(
                     "flats_exchange",
-                    format!("flats_{:?}", flat.city),
+                    &format!("flats_{:?}", flat.city),
                     serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
                     BasicPublishOptions::default(),
                     BasicProperties::default(),
                   )
-                  .wait();
+                  .wait()
+                  .expect("Could not send flat!");
               }
               Ok(())
             })
