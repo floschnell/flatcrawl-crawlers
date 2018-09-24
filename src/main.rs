@@ -42,7 +42,10 @@ fn main() {
     let flats = vec![Flat {
       city: models::Cities::Munich,
       source: "immoscout".to_owned(),
-      location: None,
+      location: Some(models::Location {
+        latitude: 9.0,
+        longitude: 10.0,
+      }),
       data: Some(models::FlatData {
         address: "Some address".to_owned(),
         externalid: "4".to_owned(),
@@ -54,7 +57,7 @@ fn main() {
       date: 0,
     }];
     println!("flat: {}", serde_json::to_string(&flats[0]).unwrap());
-    // send_results(&conf.amqp_config, amqp_host_ip, flats);
+    send_results(&conf, amqp_host_ip, flats);
   }
 
   let barrier = Arc::new(Barrier::new(thread_count + 1));
@@ -112,7 +115,7 @@ fn main() {
         }
       } else {
         println!("Will be sending {} flats ...", geocoded_flats.len());
-        send_results(&conf.amqp_config, amqp_host_ip, geocoded_flats);
+        send_results(&conf, amqp_host_ip, geocoded_flats);
         println!("Done.");
       }
     }
@@ -188,11 +191,19 @@ fn run_thread(
   }
 }
 
-fn send_results(config: &configuration::AmqpConfig, ip_addr: std::net::IpAddr, results: Vec<Flat>) {
+fn send_results(
+  config: &configuration::CrawlerConfig,
+  ip_addr: std::net::IpAddr,
+  results: Vec<Flat>,
+) {
   let socket = std::net::SocketAddr::new(ip_addr, 5672);
-  let username = config.username.to_owned();
-  let password = config.password.to_owned();
-  let queue = config.queue.to_owned();
+  let username = config.amqp_config.username.to_owned();
+  let password = config.amqp_config.password.to_owned();
+  let exchange = if config.test {
+    "test_flats_exchange"
+  } else {
+    "flats_exchange"
+  };
 
   Runtime::new()
     .unwrap()
@@ -208,7 +219,7 @@ fn send_results(config: &configuration::AmqpConfig, ip_addr: std::net::IpAddr, r
         .and_then(move |channel| {
           channel
             .exchange_declare(
-              "flats_exchange",
+              exchange,
               "fanout",
               ExchangeDeclareOptions::default(),
               FieldTable::new(),
@@ -217,7 +228,7 @@ fn send_results(config: &configuration::AmqpConfig, ip_addr: std::net::IpAddr, r
               for flat in results {
                 channel
                   .basic_publish(
-                    "flats_exchange",
+                    exchange,
                     &format!("flats_{:?}", flat.city),
                     serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
                     BasicPublishOptions::default(),
