@@ -1,5 +1,5 @@
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum Cities {
+pub enum City {
   Munich,
   Wuerzburg,
   Augsburg,

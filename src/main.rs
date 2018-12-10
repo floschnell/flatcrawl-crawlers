@@ -40,11 +40,12 @@ fn main() {
   if conf.test {
     println!("----- Running in TEST mode! -----");
     let flats = vec![Flat {
-      city: models::Cities::Munich,
+      city: models::City::Munich,
       source: "immoscout".to_owned(),
       location: Some(models::Location {
         latitude: 9.0,
         longitude: 10.0,
+        uncertainty: 0.0,
       }),
       data: Some(models::FlatData {
         address: "Some address".to_owned(),
@@ -132,15 +133,15 @@ fn main() {
 fn geocode_flats(results: &Vec<Flat>, config: &configuration::CrawlerConfig) -> Vec<Flat> {
   let mut enriched_flats = Vec::new();
   for flat in results {
-    let coords_opt = match &flat.data {
+    let geocode_result_opt = match &flat.data {
       Some(data) => match geocode::geocode(&config.nominatim_url, &data.address) {
         Ok(coords) => Some(coords),
         Err(_) => None,
       },
       None => None,
     };
-    let enriched_flat = match coords_opt {
-      Some(coords) => flat.locate(&coords),
+    let enriched_flat = match geocode_result_opt {
+      Some(geocode_result) => flat.locate(&geocode_result.coord, geocode_result.uncertainty),
       None => flat.clone(),
     };
     enriched_flats.push(enriched_flat);
@@ -183,7 +184,7 @@ fn run_thread(
         }
         add_flats(&guarded_flats, &mut flats);
       } else {
-        println!("error: {:?}", flats_result.err().unwrap().message).to_owned();
+        println!("error: {:?}", flats_result.err().unwrap().message);
       }
     } else {
       break;

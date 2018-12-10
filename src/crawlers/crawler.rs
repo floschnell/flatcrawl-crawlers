@@ -2,13 +2,16 @@ extern crate kuchiki;
 extern crate regex;
 extern crate reqwest;
 extern crate std;
+extern crate encoding_rs;
 
 use self::regex::Regex;
-use kuchiki::iter::{Descendants, Elements, Select};
+use kuchiki::iter::*;
 use kuchiki::traits::*;
 use kuchiki::{ElementData, NodeDataRef};
-use models::{Cities, Flat, FlatData};
+use models::{City, Flat, FlatData};
+use models::Encoding;
 use std::ops::Deref;
+use reqwest::Response;
 
 #[derive(Debug)]
 pub struct Error {
@@ -43,9 +46,13 @@ pub trait Crawler: Send + Sync {
   fn name(&self) -> &'static str;
   fn host(&self) -> &String;
   fn path(&self) -> &String;
-  fn city(&self) -> &Cities;
+  fn city(&self) -> &City;
   fn selector(&self) -> &'static str;
   fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error>;
+
+  fn encoding(&self) -> &Encoding {
+    &Encoding::Utf8
+  }
 
   fn crawl(&self) -> Result<Vec<Flat>, Error> {
     let results = self.get_results()?;
@@ -70,6 +77,16 @@ pub trait Crawler: Send + Sync {
     Ok(successful)
   }
 
+  fn decode_response(&self, response: &mut Response) -> Result<String, Error> {
+    let mut buf: Vec<u8> = vec![];
+    response.copy_to(&mut buf)?;
+    let (encoded_string, _, _) = match self.encoding() {
+      Encoding::Latin1 => encoding_rs::ISO_8859_2.decode(&buf),
+      Encoding::Utf8 => encoding_rs::UTF_8.decode(&buf),
+    };
+    Ok(encoded_string.into_owned())
+  }
+
   fn get_results(&self) -> Result<Select<Elements<Descendants>>, Error> {
     let mut url = "http://".to_owned();
     url.push_str(self.host());
@@ -79,8 +96,9 @@ pub trait Crawler: Send + Sync {
     let mut response = reqwest::get(url.as_str())?;
     self.log(format!("<< received response."));
 
-    self.log(format!("parsing document tree ..."));
-    let document = kuchiki::parse_html().from_utf8().read_from(&mut response)?;
+    self.log(format!("parsing document ..."));
+    let decoded_response = self.decode_response(&mut response)?;
+    let document = kuchiki::parse_html().from_utf8().read_from(&mut decoded_response.as_bytes()).expect("");
     self.log(format!("document parsed successfully."));
 
     match document.select(self.selector()) {

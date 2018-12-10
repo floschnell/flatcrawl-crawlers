@@ -5,17 +5,17 @@ extern crate std;
 
 use crawlers::{Crawler, Error};
 use kuchiki::{ElementData, NodeDataRef};
-use models::{Cities, FlatData};
+use models::{City, FlatData};
 
 pub struct ImmoWelt {
   pub host: String,
   pub path: String,
-  pub city: Cities,
+  pub city: City,
   pub brackets: regex::Regex,
 }
 
 impl ImmoWelt {
-  pub fn new(city: Cities, host: &'static str, path: &'static str) -> Self {
+  pub fn new(city: City, host: &'static str, path: &'static str) -> Self {
     return ImmoWelt {
       city,
       host: host.to_owned(),
@@ -38,7 +38,7 @@ impl Crawler for ImmoWelt {
     "immowelt"
   }
 
-  fn city(&self) -> &Cities {
+  fn city(&self) -> &City {
     &self.city
   }
 

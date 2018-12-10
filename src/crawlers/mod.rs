@@ -4,7 +4,7 @@ mod immowelt;
 mod sueddeutsche;
 mod wggesucht;
 
-use models::Cities;
+use models::City;
 
 pub fn get_crawlers() -> Vec<Box<Crawler>> {
   let mut crawlers: Vec<Box<Crawler>> = Vec::new();
@@ -12,21 +12,21 @@ pub fn get_crawlers() -> Vec<Box<Crawler>> {
   // Immobilienscout24 ------------------------------------------------
   // München
   crawlers.push(Box::new(ImmoScout::new(
-    Cities::Munich,
+    City::Munich,
     "www.immobilienscout24.de",
     "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Muenchen?pagerReporting=true",
   )));
 
   // Würzburg
   crawlers.push(Box::new(ImmoScout::new(
-    Cities::Wuerzburg,
+    City::Wuerzburg,
     "www.immobilienscout24.de",
     "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Wuerzburg?pagerReporting=true",
   )));
 
   // Augsburg
   crawlers.push(Box::new(ImmoScout::new(
-    Cities::Augsburg,
+    City::Augsburg,
     "www.immobilienscout24.de",
     "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Augsburg?pagerReporting=true",
   )));
@@ -34,21 +34,21 @@ pub fn get_crawlers() -> Vec<Box<Crawler>> {
   // ImmoWelt ---------------------------------------------------------
   // München
   crawlers.push(Box::new(ImmoWelt::new(
-    Cities::Munich,
+    City::Munich,
     "www.immowelt.de",
     "/liste/muenchen/wohnungen/mieten?sort=relevanz",
   )));
 
   // Würzburg
   crawlers.push(Box::new(ImmoWelt::new(
-    Cities::Wuerzburg,
+    City::Wuerzburg,
     "www.immowelt.de",
     "/liste/wuerzburg/wohnungen/mieten?sort=relevanz",
   )));
 
   // Augsburg
   crawlers.push(Box::new(ImmoWelt::new(
-    Cities::Augsburg,
+    City::Augsburg,
     "www.immowelt.de",
     "/liste/augsburg/wohnungen/mieten?sort=relevanz",
   )));
@@ -56,14 +56,14 @@ pub fn get_crawlers() -> Vec<Box<Crawler>> {
   // Süddeutsche ------------------------------------------------------
   // München
   crawlers.push(Box::new(Sueddeutsche::new(
-    Cities::Munich,
+    City::Munich,
     "immobilienmarkt.sueddeutsche.de",
     "/Angebote/mieten/Wohnung-Stadt_Muenchen",
   )));
 
   // Würzburg
   crawlers.push(Box::new(Sueddeutsche::new(
-    Cities::Wuerzburg,
+    City::Wuerzburg,
     "immobilienmarkt.sueddeutsche.de",
     "/Angebote/mieten/Wohnung-Stadt_Wuerzburg",
   )));
@@ -71,21 +71,21 @@ pub fn get_crawlers() -> Vec<Box<Crawler>> {
   // WG-Gesucht -------------------------------------------------------
   // München
   crawlers.push(Box::new(WGGesucht::new(
-    Cities::Munich,
+    City::Munich,
     "www.wg-gesucht.de",
     "/wohnungen-in-Muenchen.90.2.0.0.html",
   )));
 
   // Würzburg
   crawlers.push(Box::new(WGGesucht::new(
-    Cities::Wuerzburg,
+    City::Wuerzburg,
     "www.wg-gesucht.de",
     "/wohnungen-in-Wuerzburg.141.2.0.0.html",
   )));
 
   // Augsburg
   crawlers.push(Box::new(WGGesucht::new(
-    Cities::Augsburg,
+    City::Augsburg,
     "www.wg-gesucht.de",
     "/wohnungen-in-Augsburg.2.2.0.0.html",
   )));
