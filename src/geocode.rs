@@ -86,7 +86,6 @@ pub fn geocode(nominatim_url: &String, address: &String) -> Result<GeocodeResult
 
   if response.len() >= 1 {
     let best_match: &ApiResult = response.get(0).expect("Results have been empty!");
-    print!("best match: {:?}", best_match);
 
     let bounds = match (best_match.boundingbox.get(0).map(|c: &String| c.parse::<f32>()),
                         best_match.boundingbox.get(1).map(|c: &String| c.parse::<f32>()),
@@ -116,7 +115,7 @@ pub fn geocode(nominatim_url: &String, address: &String) -> Result<GeocodeResult
         uncertainty: get_distance_from_lat_lon_in_m(b.max_lat, b.max_lon, b.min_lat, b.min_lon),
       }),
       _ => Err(Error {
-        message: "Could not extract coord!".to_owned(),
+        message: "Could not geocode location!".to_owned(),
       })
     }
   } else {

@@ -98,7 +98,7 @@ pub trait Crawler: Send + Sync {
 
     self.log(format!("parsing document ..."));
     let decoded_response = self.decode_response(&mut response)?;
-    let document = kuchiki::parse_html().from_utf8().read_from(&mut decoded_response.as_bytes()).expect("");
+    let document = kuchiki::parse_html().from_utf8().read_from(&mut decoded_response.as_bytes())?;
     self.log(format!("document parsed successfully."));
 
     match document.select(self.selector()) {
