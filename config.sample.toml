@@ -2,7 +2,7 @@
 # the program will pick it up, if it is named config.toml
 
 # number of threads on which the crawlers will be executed
-thread_count = 2
+thread_count = 4
 
 # address of the geocoding service
 nominatim_url = "https://nominatim.openstreetmap.org/search"
