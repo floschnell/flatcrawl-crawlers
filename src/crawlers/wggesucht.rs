@@ -4,39 +4,14 @@ extern crate std;
 
 use crawlers::{Crawler, Error};
 use kuchiki::{ElementData, NodeDataRef};
-use models::{City, FlatData};
+use models::FlatData;
 
-pub struct WGGesucht {
-  pub host: String,
-  pub path: String,
-  pub city: City,
-}
-
-impl WGGesucht {
-  pub fn new(city: City, host: &'static str, path: &'static str) -> Self {
-    return WGGesucht {
-      city,
-      host: host.to_owned(),
-      path: path.to_owned(),
-    };
-  }
-}
+pub struct WGGesucht {}
 
 impl Crawler for WGGesucht {
-  fn host(&self) -> &String {
-    &self.host
-  }
-
-  fn path(&self) -> &String {
-    &self.path
-  }
 
   fn name(&self) -> &'static str {
     "wggesucht"
-  }
-
-  fn city(&self) -> &City {
-    &self.city
   }
 
   fn selector(&self) -> &'static str {

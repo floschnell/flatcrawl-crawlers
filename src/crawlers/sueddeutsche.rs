@@ -5,44 +5,25 @@ extern crate std;
 
 use crawlers::{Crawler, Error};
 use kuchiki::{ElementData, NodeDataRef};
-use models::{City, FlatData, Encoding};
+use models::{FlatData};
 use std::ops::Deref;
 
 pub struct Sueddeutsche {
-  pub host: String,
-  pub path: String,
-  pub city: City,
   pub brackets: regex::Regex,
 }
 
 impl Sueddeutsche {
-  pub fn new(city: City, host: &'static str, path: &'static str) -> Self {
+  pub fn new() -> Self {
     return Sueddeutsche {
-      city,
-      host: host.to_owned(),
-      path: path.to_owned(),
       brackets: regex::Regex::new(r"\s*\([^)]*\)").unwrap(),
     };
   }
 }
 
 impl Crawler for Sueddeutsche {
-  fn host(&self) -> &String {
-    &self.host
-  }
-
-  fn path(&self) -> &String {
-    &self.path
-  }
 
   fn name(&self) -> &'static str {
     "sueddeutsche"
-  }
-
-  fn encoding(&self) -> &Encoding { &Encoding::Latin1 }
-
-  fn city(&self) -> &City {
-    &self.city
   }
 
   fn selector(&self) -> &'static str {

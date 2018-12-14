@@ -9,7 +9,7 @@ reqwest = {version = "0.8.8"}
 regex = "1.1.0"
 chrono = "0.4.6"
 lapin-futures = "0.14.0"
-tokio = "0.1.10"
+tokio = "0.1.8"
 futures = "0.1.25"
 serde_json = "1.0.33"
 serde = "1.0.81"

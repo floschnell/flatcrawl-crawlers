@@ -16,28 +16,30 @@ mod crawlers;
 mod geocode;
 mod models;
 
-use crawlers::Crawler;
 use dns_lookup::lookup_host;
 use futures::Future;
 use lapin::channel::{BasicProperties, BasicPublishOptions, ExchangeDeclareOptions};
 use lapin::client::ConnectionOptions;
 use lapin::types::FieldTable;
 use models::Flat;
-use std::boxed::Box;
 use std::sync::Mutex;
+use std::thread::JoinHandle;
 use std::sync::{Arc, Barrier};
 use std::thread;
 use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
+use crawlers::Config;
+use configuration::ApplicationConfig;
+use std::time::Instant;
 
 fn main() {
-  let conf = configuration::read();
-  let mut init_run = if conf.test { false } else { true };
-  let amqp_host = conf.amqp_config.host.to_owned();
-  let thread_count = conf.thread_count as usize;
+  let app_config = configuration::read();
+  let mut init_run = if app_config.test { false } else { true };
+  let amqp_host = app_config.amqp_config.host.to_owned();
+  let thread_count = app_config.thread_count as usize;
   let amqp_host_ip = lookup_host(amqp_host.as_str()).unwrap()[0];
 
-  if conf.test {
+  if app_config.test {
     println!("----- Running in TEST mode! -----");
     let flats = vec![Flat {
       city: models::City::Munich,
@@ -58,37 +60,41 @@ fn main() {
       date: 0,
     }];
     println!("flat: {}", serde_json::to_string(&flats[0]).unwrap());
-    send_results(&conf, amqp_host_ip, flats);
+    send_results(&app_config, amqp_host_ip, flats);
   }
 
   let barrier = Arc::new(Barrier::new(thread_count + 1));
   let mut last_flats = Vec::<Flat>::new();
   loop {
-    let crawlers = crawlers::get_crawlers();
-    let guarded_crawlers = Arc::new(Mutex::new(crawlers));
-    let guarded_flats = Arc::new(Mutex::new(Vec::<Flat>::new()));
+    let crawl_start = Instant::now();
+    let guarded_configs = Arc::new(Mutex::new(crawlers::get_crawler_configs()));
 
     // process all crawlers
+    let mut thread_handles: Vec<JoinHandle<Vec<Flat>>> = vec![];
     for i in 0..thread_count {
-      let inner_guarded_crawlers = guarded_crawlers.clone();
-      let inner_guarded_flats = guarded_flats.clone();
+      let inner_guarded_configs = guarded_configs.clone();
       let inner_barrier = barrier.clone();
-      let cap_conf = conf.clone();
-      thread::spawn(move || {
-        run_thread(inner_guarded_crawlers, inner_guarded_flats, i, &cap_conf);
+      let cap_conf = app_config.clone();
+      let handle = thread::spawn(move || {
+        let flats = run_thread(inner_guarded_configs, i, &cap_conf);
         inner_barrier.wait();
+        flats
       });
+      &mut thread_handles.push(handle);
     }
 
     // wait for all threads to finish
     barrier.wait();
 
+    // collect results
+    let flats = thread_handles
+        .into_iter()
+        .map(|h| h.join().unwrap_or_default())
+        .flatten()
+        .collect::<Vec<_>>();
+
     // filter results for duplicates
     let mut filtered_flats: Vec<_> = Vec::new();
-    let flats = Arc::try_unwrap(guarded_flats)
-      .unwrap()
-      .into_inner()
-      .unwrap();
     println!("Successfully parsed {} flats.", flats.len());
     for flat in flats.to_vec() {
       let has_been_sent = last_flats
@@ -100,23 +106,28 @@ fn main() {
       }
     }
 
+    let run_duration = crawl_start.elapsed();
+    println!("Analyzed {} pages and found {} flats in {}.{} seconds.",
+             crawlers::get_crawler_configs().len(), flats.len(),
+             run_duration.as_secs(), run_duration.subsec_millis());
+
     // in the first run, we will collect
     if init_run {
       init_run = false;
       println!("During initial run, we do not send flats ...");
     } else {
       // geocode all new flats
-      let geocoded_flats = geocode_flats(&filtered_flats, &conf);
+      let geocoded_flats = geocode_flats(&filtered_flats, &app_config);
 
       // only send new flats
-      if conf.test {
+      if app_config.test {
         for flat in geocoded_flats {
           println!("Flat that would be send: {:?}", flat);
           println!("Run finished.");
         }
       } else {
         println!("Will be sending {} flats ...", geocoded_flats.len());
-        send_results(&conf, amqp_host_ip, geocoded_flats);
+        send_results(&app_config, amqp_host_ip, geocoded_flats);
         println!("Done.");
       }
     }
@@ -130,7 +141,25 @@ fn main() {
   }
 }
 
-fn geocode_flats(results: &Vec<Flat>, config: &configuration::CrawlerConfig) -> Vec<Flat> {
+fn run_thread(
+  guarded_configs: Arc<Mutex<Vec<Config>>>,
+  thread_number: usize,
+  conf: &ApplicationConfig,
+) -> Vec<Flat> {
+  let mut flats: Vec<Flat> = vec![];
+  loop {
+    let config_opt = guarded_configs.lock().unwrap().pop();
+    match config_opt {
+      Some(config) => {
+        flats.append(&mut process_config(&conf,&config, thread_number));
+      },
+      None => break,
+    }
+  };
+  flats
+}
+
+fn geocode_flats(results: &Vec<Flat>, config: &ApplicationConfig) -> Vec<Flat> {
   let mut enriched_flats = Vec::new();
   for flat in results {
     let geocode_result_opt = match &flat.data {
@@ -149,58 +178,45 @@ fn geocode_flats(results: &Vec<Flat>, config: &configuration::CrawlerConfig) -> 
   enriched_flats
 }
 
-fn get_crawler(guarded_crawlers: &Arc<Mutex<Vec<Box<Crawler>>>>) -> Option<Box<Crawler>> {
-  let mut crawlers = guarded_crawlers.lock().unwrap();
-  crawlers.pop()
-}
-
-fn add_flats(guarded_flats: &Arc<Mutex<Vec<Flat>>>, in_flats: &mut Vec<Flat>) {
-  let mut flats = guarded_flats.lock().unwrap();
-  flats.append(in_flats);
-}
-
-fn run_thread(
-  guarded_crawlers: Arc<Mutex<Vec<Box<Crawler>>>>,
-  guarded_flats: Arc<Mutex<Vec<Flat>>>,
-  thread_number: usize,
-  conf: &configuration::CrawlerConfig,
-) {
-  loop {
-    let crawler_opt = get_crawler(&guarded_crawlers);
-    if crawler_opt.is_some() {
-      let crawler = crawler_opt.unwrap();
+fn process_config(app_config: &ApplicationConfig, crawl_config: &Config, thread_number: usize) -> Vec<Flat> {
+  let crawler = crawlers::get_crawler(&crawl_config.crawler);
+  match crawler {
+    Ok(crawler) => {
       println!(
         "processing '{}' on thread {} ...",
         crawler.name(),
         thread_number
       );
-      let flats_result = crawler.crawl();
+      let flats_result = crawlers::execute(crawl_config, &crawler);
       if flats_result.is_ok() {
         let mut flats = flats_result.unwrap();
-        if conf.test {
+        if app_config.test {
           for ref flat in &flats {
             println!("Parsed flat: {:?}", flat);
           }
         }
-        add_flats(&guarded_flats, &mut flats);
+        flats
       } else {
-        println!("error: {:?}", flats_result.err().unwrap().message);
+        eprintln!("error: {:?}", flats_result.err().unwrap().message);
+        vec![]
       }
-    } else {
-      break;
     }
+    Err(e) => {
+      eprintln!("Config could not be processed: {:?}", e.message);
+      vec![]
+    },
   }
 }
 
 fn send_results(
-  config: &configuration::CrawlerConfig,
+  app_config: &ApplicationConfig,
   ip_addr: std::net::IpAddr,
   results: Vec<Flat>,
 ) {
   let socket = std::net::SocketAddr::new(ip_addr, 5672);
-  let username = config.amqp_config.username.to_owned();
-  let password = config.amqp_config.password.to_owned();
-  let exchange = if config.test {
+  let username = app_config.amqp_config.username.to_owned();
+  let password = app_config.amqp_config.password.to_owned();
+  let exchange = if app_config.test {
     "test_flats_exchange"
   } else {
     "flats_exchange"
