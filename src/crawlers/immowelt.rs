@@ -41,7 +41,7 @@ impl Crawler for ImmoWelt {
       .collect::<Vec<_>>()
       .join(", ");
     let cleaned_address = self.brackets.replace_all(&address, "").into_owned();
-    let externalid = Self::get_attr(&result, "data-estateid")?;
+    let externalid = Self::get_attr(&result, None, "data-estateid")?;
     Ok(FlatData {
       rent: Self::parse_number(rent)?,
       squaremeters: Self::parse_number(squaremeters)?,

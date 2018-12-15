@@ -30,15 +30,24 @@ pub trait Crawler: Send + Sync {
 
   fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error>;
 
-  fn get_attr(element: &NodeDataRef<ElementData>, name: &'static str) -> Result<String, Error>
-  where
-    Self: Sized,
+  fn get_attr(element: &NodeDataRef<ElementData>, select_opt: Option<&'static str>, name: &'static str) -> Result<String, Error>
+    where
+        Self: Sized,
   {
-    match element.deref().attributes.borrow_mut().get(name) {
-      Some(val) => Ok(val.to_owned()),
-      None => Err(Error {
-        message: format!("Could not find attribute '{}'!", name),
-      }),
+    match select_opt {
+      Some(select) => match element.as_node().select_first(select.as_ref()) {
+        Ok(node) => match node.attributes.borrow().get(name) {
+          Some(val) => Ok(val.to_owned()),
+          None => Err(Error { message: format!("Could not find attribute '{}'!", name) })
+        },
+        Err(_e) => Err(Error { message: format!("Could not find an element matching selector '{}'!", select) }),
+      },
+      None => match element.deref().attributes.borrow_mut().get(name) {
+        Some(val) => Ok(val.to_owned()),
+        None => Err(Error {
+          message: format!("Could not find attribute '{}'!", name),
+        }),
+      }
     }
   }
 

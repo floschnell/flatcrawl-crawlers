@@ -33,7 +33,7 @@ impl Crawler for WGGesucht {
         Self::get_text(&result, ".ang_spalte_stadt")?
         .replace("\n", "")
         .trim();
-      let externalid = Self::get_attr(&result, "adid")?;
+      let externalid = Self::get_attr(&result, None, "adid")?;
     Ok(FlatData {
       rent: Self::parse_number(rent)?,
       squaremeters: Self::parse_number(squaremeters)?,

@@ -19,9 +19,9 @@ pub struct Error {
 }
 
 impl From<crawler::Error> for Error {
-    fn from(_err: crawler::Error) -> Error {
+    fn from(err: crawler::Error) -> Error {
         return Error {
-            message: "Crawler Error".to_owned(),
+            message: format!("Crawler Error: {}", err.message),
         };
     }
 }

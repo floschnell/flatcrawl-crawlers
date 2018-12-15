@@ -5,6 +5,7 @@ mod sueddeutsche;
 mod wggesucht;
 mod config;
 mod executor;
+mod wohnungsboerse;
 
 use models::City;
 use models::Encoding;
@@ -15,6 +16,7 @@ pub use crawlers::immoscout::ImmoScout;
 pub use crawlers::immowelt::ImmoWelt;
 pub use crawlers::sueddeutsche::Sueddeutsche;
 pub use crawlers::wggesucht::WGGesucht;
+pub use crawlers::wohnungsboerse::Wohnungsboerse;
 pub use crawlers::config::Config;
 pub use crawlers::executor::execute;
 
@@ -23,6 +25,7 @@ pub enum CrawlerImpl {
   ImmoWelt,
   Sueddeutsche,
   WGGesucht,
+  Wohnungsboerse,
 }
 
 pub fn get_crawler(crawler_impl: &CrawlerImpl) -> Result<Box<Crawler>, Error> {
@@ -31,6 +34,7 @@ pub fn get_crawler(crawler_impl: &CrawlerImpl) -> Result<Box<Crawler>, Error> {
     CrawlerImpl::WGGesucht => Ok(Box::new(WGGesucht {})),
     CrawlerImpl::Sueddeutsche => Ok(Box::new(Sueddeutsche::new())),
     CrawlerImpl::ImmoScout => Ok(Box::new(ImmoScout {})),
+    CrawlerImpl::Wohnungsboerse => Ok(Box::new(Wohnungsboerse {}))
   }
 }
 
@@ -138,6 +142,34 @@ pub fn get_crawler_configs() -> Vec<Config> {
     path: "/wohnungen-in-Augsburg.2.2.0.0.html",
     encoding: Encoding::Utf8,
     crawler: CrawlerImpl::WGGesucht,
+  });
+
+  // Wohnungsboerse -------------------------------------------------------
+  // München
+  configs.push(Config {
+    city: City::Munich,
+    host: "www.wohnungsboerse.net",
+    path: "/searches/index/marketing_type:miete/object_type:1/country:de/minrooms:1/state:2/cities:2091",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::Wohnungsboerse,
+  });
+
+  // Würzburg
+  configs.push(Config {
+    city: City::Wuerzburg,
+    host: "www.wohnungsboerse.net",
+    path: "/searches/index/marketing_type:miete/object_type:1/country:de/minrooms:1/state:2/cities:2772",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::Wohnungsboerse,
+  });
+
+  // Augsburg
+  configs.push(Config {
+    city: City::Augsburg,
+    host: "www.wohnungsboerse.net",
+    path: "/searches/index/marketing_type:miete/object_type:1/country:de/minrooms:1/state:2/cities:1231",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::Wohnungsboerse,
   });
 
   configs

@@ -46,7 +46,7 @@ impl Crawler for Sueddeutsche {
 
     let rent = Self::get_text(&result, ".hitPrice")?.replace("&nbsp;", " ");
 
-    let externalid = Self::get_attr(&result, "id")?.replace("idHitRowList", "");
+    let externalid = Self::get_attr(&result, None, "id")?.replace("idHitRowList", "");
 
     match (&squaremeters_opt, &rooms_opt, &address_opt) {
       (&Some(squaremeters), &Some(rooms), &Some(address)) => Ok(FlatData {
