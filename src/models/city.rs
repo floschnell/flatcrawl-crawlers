@@ -3,4 +3,5 @@ pub enum City {
   Munich,
   Wuerzburg,
   Augsburg,
+  Kempten
 }

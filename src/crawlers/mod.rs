@@ -69,6 +69,16 @@ pub fn get_crawler_configs() -> Vec<Config> {
     crawler: CrawlerImpl::ImmoScout,
   });
 
+  // Kempten
+  configs.push(Config {
+    city: City::Kempten,
+    host: "www.immobilienscout24.de",
+    path: "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Kempten-Allgaeu?pagerReporting=true",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::ImmoScout,
+  });
+
+
   // ImmoWelt ------------------------------------------------
   // München
   configs.push(Config {
@@ -93,6 +103,15 @@ pub fn get_crawler_configs() -> Vec<Config> {
     city: City::Augsburg,
     host: "www.immowelt.de",
     path: "/liste/augsburg/wohnungen/mieten?sort=relevanz",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::ImmoWelt,
+  });
+
+  // Kempten
+  configs.push(Config {
+    city: City::Kempten,
+    host: "www.immowelt.de",
+    path: "/liste/kempten-allgaeu/wohnungen/mieten?sort=relevanz",
     encoding: Encoding::Utf8,
     crawler: CrawlerImpl::ImmoWelt,
   });
@@ -144,6 +163,15 @@ pub fn get_crawler_configs() -> Vec<Config> {
     crawler: CrawlerImpl::WGGesucht,
   });
 
+  // Kempten
+  configs.push(Config {
+    city: City::Kempten,
+    host: "www.wg-gesucht.de",
+    path: "/wohnungen-in-Kempten-Allgaeu.70.2.0.0.html",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::WGGesucht,
+  });
+
   // Wohnungsboerse -------------------------------------------------------
   // München
   configs.push(Config {
@@ -168,6 +196,15 @@ pub fn get_crawler_configs() -> Vec<Config> {
     city: City::Augsburg,
     host: "www.wohnungsboerse.net",
     path: "/searches/index/marketing_type:miete/object_type:1/country:de/minrooms:1/state:2/cities:1231",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::Wohnungsboerse,
+  });
+  
+  // Kempten
+  configs.push(Config {
+    city: City::Kempten,
+    host: "www.wohnungsboerse.net",
+    path: "/searches/index/marketing_type:miete/object_type:1/country:de/minrooms:1/state:2/cities:1879",
     encoding: Encoding::Utf8,
     crawler: CrawlerImpl::Wohnungsboerse,
   });
