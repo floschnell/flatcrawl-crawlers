@@ -1,36 +1,23 @@
-extern crate chrono;
-extern crate config;
-extern crate dns_lookup;
-extern crate futures;
-extern crate kuchiki;
-extern crate lapin_futures as lapin;
-extern crate reqwest;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate tokio;
-
 mod configuration;
 mod crawlers;
 mod geocode;
 mod models;
 
+use crate::models::Flat;
+use configuration::ApplicationConfig;
+use crawlers::Config;
 use dns_lookup::lookup_host;
 use futures::Future;
-use lapin::channel::{BasicProperties, BasicPublishOptions, ExchangeDeclareOptions};
-use lapin::client::ConnectionOptions;
-use lapin::types::FieldTable;
-use models::Flat;
+use lapin_futures::channel::{BasicProperties, BasicPublishOptions, ExchangeDeclareOptions};
+use lapin_futures::client::ConnectionOptions;
+use lapin_futures::types::FieldTable;
 use std::sync::Mutex;
-use std::thread::JoinHandle;
 use std::sync::{Arc, Barrier};
 use std::thread;
+use std::thread::JoinHandle;
+use std::time::Instant;
 use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
-use crawlers::Config;
-use configuration::ApplicationConfig;
-use std::time::Instant;
 
 fn main() {
   let app_config = configuration::read();
@@ -88,10 +75,10 @@ fn main() {
 
     // collect results
     let flats = thread_handles
-        .into_iter()
-        .map(|h| h.join().unwrap_or_default())
-        .flatten()
-        .collect::<Vec<_>>();
+      .into_iter()
+      .map(|h| h.join().unwrap_or_default())
+      .flatten()
+      .collect::<Vec<_>>();
 
     // filter results for duplicates
     let mut filtered_flats: Vec<_> = Vec::new();
@@ -107,9 +94,13 @@ fn main() {
     }
 
     let run_duration = crawl_start.elapsed();
-    println!("Analyzed {} pages and found {} flats in {}.{} seconds.",
-             crawlers::get_crawler_configs().len(), flats.len(),
-             run_duration.as_secs(), run_duration.subsec_millis());
+    println!(
+      "Analyzed {} pages and found {} flats in {}.{} seconds.",
+      crawlers::get_crawler_configs().len(),
+      flats.len(),
+      run_duration.as_secs(),
+      run_duration.subsec_millis()
+    );
 
     // in the first run, we will collect
     if init_run {
@@ -151,11 +142,11 @@ fn run_thread(
     let config_opt = guarded_configs.lock().unwrap().pop();
     match config_opt {
       Some(config) => {
-        flats.append(&mut process_config(&conf,&config, thread_number));
-      },
+        flats.append(&mut process_config(&conf, &config, thread_number));
+      }
       None => break,
     }
-  };
+  }
   flats
 }
 
@@ -178,7 +169,11 @@ fn geocode_flats(results: &Vec<Flat>, config: &ApplicationConfig) -> Vec<Flat> {
   enriched_flats
 }
 
-fn process_config(app_config: &ApplicationConfig, crawl_config: &Config, thread_number: usize) -> Vec<Flat> {
+fn process_config(
+  app_config: &ApplicationConfig,
+  crawl_config: &Config,
+  thread_number: usize,
+) -> Vec<Flat> {
   let crawler = crawlers::get_crawler(&crawl_config.crawler);
   match crawler {
     Ok(crawler) => {
@@ -189,7 +184,7 @@ fn process_config(app_config: &ApplicationConfig, crawl_config: &Config, thread_
       );
       let flats_result = crawlers::execute(crawl_config, &crawler);
       if flats_result.is_ok() {
-        let mut flats = flats_result.unwrap();
+        let flats = flats_result.unwrap();
         if app_config.test {
           for ref flat in &flats {
             println!("Parsed flat: {:?}", flat);
@@ -204,15 +199,11 @@ fn process_config(app_config: &ApplicationConfig, crawl_config: &Config, thread_
     Err(e) => {
       eprintln!("Config could not be processed: {:?}", e.message);
       vec![]
-    },
+    }
   }
 }
 
-fn send_results(
-  app_config: &ApplicationConfig,
-  ip_addr: std::net::IpAddr,
-  results: Vec<Flat>,
-) {
+fn send_results(app_config: &ApplicationConfig, ip_addr: std::net::IpAddr, results: Vec<Flat>) {
   let socket = std::net::SocketAddr::new(ip_addr, 5672);
   let username = app_config.amqp_config.username.to_owned();
   let password = app_config.amqp_config.password.to_owned();
@@ -226,13 +217,14 @@ fn send_results(
     .unwrap()
     .block_on_all(
       TcpStream::connect(&socket)
+        .map_err(failure::Error::from)
         .and_then(|stream| {
           let mut options = ConnectionOptions::default();
           options.username = username;
           options.password = password;
-          lapin::client::Client::connect(stream, options)
+          lapin_futures::client::Client::connect(stream, options).map_err(failure::Error::from)
         })
-        .and_then(|(client, _)| client.create_channel())
+        .and_then(|(client, _)| client.create_channel().map_err(failure::Error::from))
         .and_then(move |channel| {
           channel
             .exchange_declare(
@@ -256,6 +248,7 @@ fn send_results(
               }
               Ok(())
             })
+            .map_err(failure::Error::from)
         })
         .map_err(|err| eprintln!("error: {:?}", err)),
     )

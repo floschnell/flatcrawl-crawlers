@@ -3,9 +3,9 @@ extern crate regex;
 extern crate reqwest;
 extern crate std;
 
-use crawlers::{Crawler, Error};
+use super::{Crawler, Error};
+use crate::models::FlatData;
 use kuchiki::{ElementData, NodeDataRef};
-use models::{FlatData};
 use std::ops::Deref;
 
 pub struct Sueddeutsche {
@@ -21,7 +21,6 @@ impl Sueddeutsche {
 }
 
 impl Crawler for Sueddeutsche {
-
   fn name(&self) -> &'static str {
     "sueddeutsche"
   }

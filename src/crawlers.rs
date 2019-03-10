@@ -1,24 +1,24 @@
+mod config;
 mod crawler;
+mod executor;
 mod immoscout;
 mod immowelt;
 mod sueddeutsche;
 mod wggesucht;
-mod config;
-mod executor;
 mod wohnungsboerse;
 
-use models::City;
-use models::Encoding;
+use crate::models::City;
+use crate::models::Encoding;
 
-pub use crawlers::crawler::Crawler;
-pub use crawlers::crawler::Error;
-pub use crawlers::immoscout::ImmoScout;
-pub use crawlers::immowelt::ImmoWelt;
-pub use crawlers::sueddeutsche::Sueddeutsche;
-pub use crawlers::wggesucht::WGGesucht;
-pub use crawlers::wohnungsboerse::Wohnungsboerse;
-pub use crawlers::config::Config;
-pub use crawlers::executor::execute;
+pub use crate::crawlers::config::Config;
+pub use crate::crawlers::crawler::Crawler;
+pub use crate::crawlers::crawler::Error;
+pub use crate::crawlers::executor::execute;
+pub use crate::crawlers::immoscout::ImmoScout;
+pub use crate::crawlers::immowelt::ImmoWelt;
+pub use crate::crawlers::sueddeutsche::Sueddeutsche;
+pub use crate::crawlers::wggesucht::WGGesucht;
+pub use crate::crawlers::wohnungsboerse::Wohnungsboerse;
 
 pub enum CrawlerImpl {
   ImmoScout,
@@ -34,7 +34,7 @@ pub fn get_crawler(crawler_impl: &CrawlerImpl) -> Result<Box<Crawler>, Error> {
     CrawlerImpl::WGGesucht => Ok(Box::new(WGGesucht {})),
     CrawlerImpl::Sueddeutsche => Ok(Box::new(Sueddeutsche::new())),
     CrawlerImpl::ImmoScout => Ok(Box::new(ImmoScout {})),
-    CrawlerImpl::Wohnungsboerse => Ok(Box::new(Wohnungsboerse {}))
+    CrawlerImpl::Wohnungsboerse => Ok(Box::new(Wohnungsboerse {})),
   }
 }
 
@@ -77,7 +77,6 @@ pub fn get_crawler_configs() -> Vec<Config> {
     encoding: Encoding::Utf8,
     crawler: CrawlerImpl::ImmoScout,
   });
-
 
   // ImmoWelt ------------------------------------------------
   // München
@@ -199,7 +198,7 @@ pub fn get_crawler_configs() -> Vec<Config> {
     encoding: Encoding::Utf8,
     crawler: CrawlerImpl::Wohnungsboerse,
   });
-  
+
   // Kempten
   configs.push(Config {
     city: City::Kempten,
@@ -211,4 +210,3 @@ pub fn get_crawler_configs() -> Vec<Config> {
 
   configs
 }
-

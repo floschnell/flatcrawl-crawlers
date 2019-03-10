@@ -1,12 +1,12 @@
+extern crate encoding_rs;
 extern crate kuchiki;
 extern crate regex;
 extern crate reqwest;
 extern crate std;
-extern crate encoding_rs;
 
 use self::regex::Regex;
+use crate::models::FlatData;
 use kuchiki::{ElementData, NodeDataRef};
-use models::{FlatData};
 use std::ops::Deref;
 
 #[derive(Debug)]
@@ -23,31 +23,38 @@ impl From<std::num::ParseFloatError> for Error {
 }
 
 pub trait Crawler: Send + Sync {
-
   fn name(&self) -> &'static str;
 
   fn selector(&self) -> &'static str;
 
   fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error>;
 
-  fn get_attr(element: &NodeDataRef<ElementData>, select_opt: Option<&'static str>, name: &'static str) -> Result<String, Error>
-    where
-        Self: Sized,
+  fn get_attr(
+    element: &NodeDataRef<ElementData>,
+    select_opt: Option<&'static str>,
+    name: &'static str,
+  ) -> Result<String, Error>
+  where
+    Self: Sized,
   {
     match select_opt {
       Some(select) => match element.as_node().select_first(select.as_ref()) {
         Ok(node) => match node.attributes.borrow().get(name) {
           Some(val) => Ok(val.to_owned()),
-          None => Err(Error { message: format!("Could not find attribute '{}'!", name) })
+          None => Err(Error {
+            message: format!("Could not find attribute '{}'!", name),
+          }),
         },
-        Err(_e) => Err(Error { message: format!("Could not find an element matching selector '{}'!", select) }),
+        Err(_e) => Err(Error {
+          message: format!("Could not find an element matching selector '{}'!", select),
+        }),
       },
       None => match element.deref().attributes.borrow_mut().get(name) {
         Some(val) => Ok(val.to_owned()),
         None => Err(Error {
           message: format!("Could not find attribute '{}'!", name),
         }),
-      }
+      },
     }
   }
 

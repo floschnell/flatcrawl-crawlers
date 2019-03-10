@@ -1,6 +1,7 @@
+use crate::geocode::Coordinate;
+use crate::models::city::City;
 use chrono::prelude::*;
-use geocode::Coordinate;
-use models::City;
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Location {

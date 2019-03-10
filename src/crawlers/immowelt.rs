@@ -3,9 +3,9 @@ extern crate regex;
 extern crate reqwest;
 extern crate std;
 
-use crawlers::{Crawler, Error};
+use super::{Crawler, Error};
+use crate::models::FlatData;
 use kuchiki::{ElementData, NodeDataRef};
-use models::{FlatData};
 
 pub struct ImmoWelt {
   pub brackets: regex::Regex,
@@ -20,7 +20,6 @@ impl ImmoWelt {
 }
 
 impl Crawler for ImmoWelt {
-
   fn name(&self) -> &'static str {
     "immowelt"
   }
