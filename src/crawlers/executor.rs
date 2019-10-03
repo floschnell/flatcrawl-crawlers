@@ -9,6 +9,7 @@ use crate::models::{Encoding, Flat};
 use kuchiki::iter::*;
 use kuchiki::traits::*;
 use reqwest::Response;
+use std::error::Error as StdErr;
 
 #[derive(Debug)]
 pub struct Error {
@@ -33,9 +34,9 @@ impl From<std::io::Error> for Error {
 
 impl From<reqwest::Error> for Error {
   fn from(_err: reqwest::Error) -> Error {
-    return Error {
-      message: "Request Error".to_owned(),
-    };
+    let mut message = String::from("Request Error: ");
+    message.push_str(_err.description());
+    return Error { message };
   }
 }
 

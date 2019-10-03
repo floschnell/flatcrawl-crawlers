@@ -1,0 +1,19 @@
+FROM rust:1.37 as build
+
+COPY src /opt/flatcrawl/src
+COPY Cargo.toml /opt/flatcrawl
+COPY Cargo.lock /opt/flatcrawl
+WORKDIR /opt/flatcrawl
+RUN cargo build
+
+FROM debian
+
+COPY --from=build /opt/flatcrawl/target/debug/flatcrawl-crawler /opt/flatcrawl/crawler
+
+COPY config.toml /opt/flatcrawl/
+RUN chmod +x /opt/flatcrawl/crawler
+WORKDIR /opt/flatcrawl
+
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+
+CMD [ "./crawler" ]
