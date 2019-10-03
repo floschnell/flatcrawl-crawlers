@@ -28,7 +28,7 @@ pub enum CrawlerImpl {
   Wohnungsboerse,
 }
 
-pub fn get_crawler(crawler_impl: &CrawlerImpl) -> Result<Box<Crawler>, Error> {
+pub fn get_crawler(crawler_impl: &CrawlerImpl) -> Result<Box<dyn Crawler>, Error> {
   match crawler_impl {
     CrawlerImpl::ImmoWelt => Ok(Box::new(ImmoWelt::new())),
     CrawlerImpl::WGGesucht => Ok(Box::new(WGGesucht {})),

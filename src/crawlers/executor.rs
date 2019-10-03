@@ -39,7 +39,7 @@ impl From<reqwest::Error> for Error {
   }
 }
 
-pub fn execute(config: &Config, crawler: &Box<Crawler>) -> Result<Vec<Flat>, Error> {
+pub fn execute(config: &Config, crawler: &Box<dyn Crawler>) -> Result<Vec<Flat>, Error> {
   let results = get_results(config, crawler)?;
   let mut successful: Vec<Flat> = Vec::new();
   let flat_results: Vec<Result<Flat, Error>> = results
@@ -74,7 +74,7 @@ fn decode_response(response: &mut Response, encoding: &Encoding) -> Result<Strin
 
 fn get_results(
   config: &Config,
-  crawler: &Box<Crawler>,
+  crawler: &Box<dyn Crawler>,
 ) -> Result<Select<Elements<Descendants>>, Error> {
   let mut url = "http://".to_owned();
   url.push_str(&config.host);
