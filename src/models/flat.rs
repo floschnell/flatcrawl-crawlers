@@ -32,12 +32,12 @@ pub struct FlatData {
 
 impl PartialEq for Flat {
   fn eq(&self, other: &Self) -> bool {
-    self.is_equal_to(other)
-      || (self.city == other.city
-        && self.source == other.source
-        && self.data.is_some()
-        && other.data.is_some()
-        && self.data.as_ref().unwrap().externalid == other.data.as_ref().unwrap().externalid)
+    (self.city == other.city
+      && self.source == other.source
+      && self.data.is_some()
+      && other.data.is_some()
+      && self.data.as_ref().unwrap().externalid == other.data.as_ref().unwrap().externalid)
+      || self.is_equal_to(other)
   }
 }
 
@@ -98,9 +98,37 @@ mod tests {
 
   #[test]
   fn compare_flat_simple() {
-    let flat = Flat::new(String::from("some source"), City::Munich);
-    let another_flat = Flat::new(String::from("some source"), City::Munich);
-    assert_eq!(flat, another_flat);
+    let flat_a = Flat {
+      source: String::from("some source A"),
+      city: City::Munich,
+      date: 0,
+      data: Some(FlatData {
+        rent: 100.,
+        squaremeters: 100.,
+        address: String::from("Some address"),
+        title: String::from("This is some title"),
+        externalid: String::from("1"),
+        rooms: 3.,
+      }),
+      location: None,
+    };
+
+    let flat_b = Flat {
+      source: String::from("some source A"),
+      city: City::Munich,
+      date: 0,
+      data: Some(FlatData {
+        rent: 100.,
+        squaremeters: 100.,
+        address: String::from("This is some other address"),
+        title: String::from("This is some other title"),
+        externalid: String::from("1"),
+        rooms: 1.,
+      }),
+      location: None,
+    };
+
+    assert_eq!(flat_a, flat_b);
   }
 
   #[test]
