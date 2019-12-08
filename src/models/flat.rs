@@ -97,6 +97,27 @@ mod tests {
   use crate::models::FlatData;
 
   #[test]
+  fn compare_flat_too_simple() {
+    let flat_a = Flat {
+      source: String::from("some source A"),
+      city: City::Munich,
+      date: 0,
+      data: None,
+      location: None,
+    };
+
+    let flat_b = Flat {
+      source: String::from("some source A"),
+      city: City::Munich,
+      date: 0,
+      data: None,
+      location: None,
+    };
+
+    assert_ne!(flat_a, flat_b);
+  }
+
+  #[test]
   fn compare_flat_simple() {
     let flat_a = Flat {
       source: String::from("some source A"),
