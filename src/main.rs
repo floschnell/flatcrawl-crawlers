@@ -80,13 +80,13 @@ fn main() {
     // filter results for duplicates
     let mut filtered_flats: Vec<_> = Vec::new();
     println!("successfully parsed {} flats.", flats.len());
-    for flat in flats.to_vec() {
+    for current_flat in flats.to_vec() {
       let has_been_sent = last_flats
         .to_vec()
         .into_iter()
-        .any(|previous| previous.id().unwrap() == flat.id().unwrap());
+        .any(|previous_flat| previous_flat == current_flat);
       if !has_been_sent {
-        filtered_flats.push(flat);
+        filtered_flats.push(current_flat);
       }
     }
 
@@ -108,7 +108,7 @@ fn main() {
       let geocoded_flats = geocode_flats(&filtered_flats, &app_config);
 
       // only send new flats
-      if !app_config.test {
+      if app_config.test {
         for flat in geocoded_flats {
           println!("flat that would be send: {:?}", flat);
           println!("run finished.");

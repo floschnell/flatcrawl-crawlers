@@ -4,13 +4,13 @@ COPY src /opt/flatcrawl/src
 COPY Cargo.toml /opt/flatcrawl
 COPY Cargo.lock /opt/flatcrawl
 WORKDIR /opt/flatcrawl
-RUN cargo build
+RUN cargo build --release
 
 FROM debian
 
-COPY --from=build /opt/flatcrawl/target/debug/flatcrawl-crawler /opt/flatcrawl/crawler
+COPY --from=build /opt/flatcrawl/target/release/flatcrawl-crawler /opt/flatcrawl/crawler
 
-COPY config.toml /opt/flatcrawl/
+COPY config.sample.toml /opt/flatcrawl/
 RUN chmod +x /opt/flatcrawl/crawler
 WORKDIR /opt/flatcrawl
 

@@ -1,6 +1,7 @@
 use crate::geocode::Coordinate;
 use crate::models::city::City;
 use chrono::prelude::*;
+use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -29,7 +30,31 @@ pub struct FlatData {
   pub rooms: f32,
 }
 
+impl PartialEq for Flat {
+  fn eq(&self, other: &Self) -> bool {
+    self.is_equal_to(other)
+      || (self.city == other.city
+        && self.source == other.source
+        && self.data.is_some()
+        && other.data.is_some()
+        && self.data.as_ref().unwrap().externalid == other.data.as_ref().unwrap().externalid)
+  }
+}
+
 impl Flat {
+  fn is_equal_to(&self, other: &Self) -> bool {
+    let special_characters_regex = Regex::new("[^0-9a-zA-Z]+").unwrap();
+    self.city == other.city
+      && match (&self.data, &other.data) {
+        (None, None) => true,
+        (Some(ref d1), Some(ref d2)) => {
+          special_characters_regex.replace_all(&d1.title.to_lowercase(), "")
+            == special_characters_regex.replace_all(&d2.title.to_lowercase(), "")
+        }
+        _ => false,
+      }
+  }
+
   pub fn new(source: String, city: City) -> Flat {
     Flat {
       date: Utc::now().timestamp(),
@@ -61,13 +86,6 @@ impl Flat {
         longitude: coord.longitude,
         uncertainty,
       }),
-    }
-  }
-
-  pub fn id(&self) -> Option<String> {
-    match self.data {
-      Some(ref data) => Some(format!("{}-{}", self.source, data.externalid)),
-      None => None,
     }
   }
 }
