@@ -3,6 +3,11 @@ name = "flatcrawl-crawler"
 version = "1.0.0"
 authors = ["Florian Schnell <floschnell@gmail.com>"]
 edition = "2018"
+license-file = "LICENSE"
+description = "This is a rust implementation of a set of webpage crawlers. New crawlers can be easily configured and the output can be written to an AMQP queue."
+homepage = "http://flatcrawl.net"
+repository = "https://github.com/floschnell/flatcrawl-crawlers.git"
+documentation = "https://github.com/floschnell/flatcrawl-crawlers"
 
 [dependencies]
 kuchiki = {version = "0.7.3"}
