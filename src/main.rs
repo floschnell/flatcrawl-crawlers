@@ -3,29 +3,28 @@ mod crawlers;
 mod geocode;
 mod models;
 
-use crate::lapin::options::{BasicPublishOptions, ExchangeDeclareOptions};
-use crate::lapin::types::FieldTable;
-use crate::lapin::{BasicProperties, Client, ConnectionProperties, ExchangeKind};
-use crate::models::Flat;
+use crate::models::{Property, PropertyData, PropertyType, ContractType};
 use configuration::ApplicationConfig;
 use crawlers::Config;
-use futures::future::Future;
-use lapin_futures as lapin;
 use std::sync::Mutex;
 use std::sync::{Arc, Barrier};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Instant;
+use firestore_db_and_auth::{Credentials, ServiceSession, documents, errors};
 
 fn main() {
   let app_config = configuration::read();
-  let mut init_run = if app_config.test { false } else { true };
-  let amqp_host = app_config.amqp_config.host.to_owned();
   let thread_count = app_config.thread_count as usize;
+
+  println!("connecting to firebase ...");
+  let cred = Credentials::from_file("flatcrawl-firebase.json").expect("Read firebase credentials file");
+  let session = ServiceSession::new(cred).expect("Create firebase service account session");
+  println!("connection successfully established.");
 
   if app_config.test {
     println!("----- Running in TEST mode! -----");
-    let flats = vec![Flat {
+    let flats = vec![Property {
       city: models::City::Munich,
       source: "immoscout".to_owned(),
       location: Some(models::Location {
@@ -33,28 +32,30 @@ fn main() {
         longitude: 10.0,
         uncertainty: 0.0,
       }),
-      data: Some(models::FlatData {
+      data: Some(PropertyData {
         address: "Some address".to_owned(),
         externalid: "4".to_owned(),
-        rent: 100.0,
+        price: 100.0,
         rooms: 2.0,
         squaremeters: 60.0,
         title: "Test Flat".to_owned(),
+        contract_type: ContractType::Rent,
+        property_type: PropertyType::Flat,
       }),
       date: 0,
     }];
     println!("flat: {}", serde_json::to_string(&flats[0]).unwrap());
-    send_results(&app_config, amqp_host.as_str(), flats);
+    send_results(&session, flats);
   }
 
   let barrier = Arc::new(Barrier::new(thread_count + 1));
-  let mut last_flats = Vec::<Flat>::new();
+  let mut last_flats = Vec::<Property>::new();
   loop {
     let crawl_start = Instant::now();
     let guarded_configs = Arc::new(Mutex::new(crawlers::get_crawler_configs()));
 
     // process all crawlers
-    let mut thread_handles: Vec<JoinHandle<Vec<Flat>>> = vec![];
+    let mut thread_handles: Vec<JoinHandle<Vec<Property>>> = vec![];
     for i in 0..thread_count {
       let inner_guarded_configs = guarded_configs.clone();
       let inner_barrier = barrier.clone();
@@ -77,9 +78,18 @@ fn main() {
       .flatten()
       .collect::<Vec<_>>();
 
+    let run_duration = crawl_start.elapsed();
+    println!(
+      "analyzed {} pages and found {} flats in {}.{} seconds.",
+      crawlers::get_crawler_configs().len(),
+      flats.len(),
+      run_duration.as_secs(),
+      run_duration.subsec_millis()
+    );
+
     // filter results for duplicates
     let mut filtered_flats: Vec<_> = Vec::new();
-    println!("successfully parsed {} flats.", flats.len());
+    println!("Before deduplication: {}", flats.len());
     for current_flat in flats.to_vec() {
       let has_been_sent = last_flats
         .to_vec()
@@ -90,34 +100,33 @@ fn main() {
       }
     }
 
-    let run_duration = crawl_start.elapsed();
-    println!(
-      "analyzed {} pages and found {} flats in {}.{} seconds.",
-      crawlers::get_crawler_configs().len(),
-      flats.len(),
-      run_duration.as_secs(),
-      run_duration.subsec_millis()
-    );
+    println!("After offline deduplication: {}", filtered_flats.len());
 
-    // in the first run, we will collect
-    if init_run {
-      init_run = false;
-      println!("during initial run, we do not send flats ...");
-    } else {
-      // geocode all new flats
-      let geocoded_flats = geocode_flats(&filtered_flats, &app_config);
-
-      // only send new flats
-      if app_config.test {
-        for flat in geocoded_flats {
-          println!("flat that would be send: {:?}", flat);
-          println!("run finished.");
-        }
-      } else {
-        println!("will be sending {} flats ...", geocoded_flats.len());
-        send_results(&app_config, amqp_host.as_str(), geocoded_flats);
-        println!("done.");
+    let mut new_flats: Vec<Property> = vec!();
+    for ref flat in filtered_flats {
+      let id = flat.data.as_ref().map(|x| x.externalid.to_owned());
+      let document_id = id.map(|x| format!("{}-{}", flat.source, x)).unwrap();
+      let document: Result<Property, errors::FirebaseError> = documents::read(&session, "flats", document_id);
+      match document {
+        Ok(_) => (),
+        Err(_) => new_flats.push(flat.to_owned()),
       }
+    }
+    
+    println!("After online deduplication: {}", new_flats.len());
+
+    // geocode all new flats
+    let geocoded_flats = geocode_flats(&new_flats, &app_config);
+
+    // send flats
+    if app_config.test {
+      for flat in geocoded_flats {
+        println!("flat that would be send: {:?}", flat);
+        println!("run finished.");
+      }
+    } else {
+      send_results(&session, geocoded_flats);
+      println!("done.");
     }
 
     // remember the flats so we can compare against them
@@ -133,8 +142,8 @@ fn run_thread(
   guarded_configs: Arc<Mutex<Vec<Config>>>,
   thread_number: usize,
   conf: &ApplicationConfig,
-) -> Vec<Flat> {
-  let mut flats: Vec<Flat> = vec![];
+) -> Vec<Property> {
+  let mut flats: Vec<Property> = vec![];
   loop {
     let config_opt = guarded_configs.lock().unwrap().pop();
     match config_opt {
@@ -147,8 +156,9 @@ fn run_thread(
   flats
 }
 
-fn geocode_flats(results: &Vec<Flat>, config: &ApplicationConfig) -> Vec<Flat> {
+fn geocode_flats(results: &Vec<Property>, config: &ApplicationConfig) -> Vec<Property> {
   let mut enriched_flats = Vec::new();
+  print!("geocoding flats ...");
   for flat in results {
     let geocode_result_opt = match &flat.data {
       Some(data) => match geocode::geocode(&config.nominatim_url, &data.address) {
@@ -162,7 +172,9 @@ fn geocode_flats(results: &Vec<Flat>, config: &ApplicationConfig) -> Vec<Flat> {
       None => flat.clone(),
     };
     enriched_flats.push(enriched_flat);
+    print!(".");
   }
+  println!();
   enriched_flats
 }
 
@@ -170,7 +182,7 @@ fn process_config(
   app_config: &ApplicationConfig,
   crawl_config: &Config,
   thread_number: usize,
-) -> Vec<Flat> {
+) -> Vec<Property> {
   let crawler = crawlers::get_crawler(&crawl_config.crawler);
   match crawler {
     Ok(crawler) => {
@@ -200,58 +212,16 @@ fn process_config(
   }
 }
 
-fn send_results(app_config: &ApplicationConfig, host: &str, results: Vec<Flat>) {
-  let exchange = if app_config.test {
-    "test_flats_exchange"
-  } else {
-    "flats_exchange"
-  };
-  let mut address = String::from("amqp://");
-  address.push_str(app_config.amqp_config.username.as_str());
-  address.push_str(":");
-  address.push_str(app_config.amqp_config.password.as_str());
-  address.push_str("@");
-  address.push_str(host);
-  address.push_str(":5672/%2f");
-
-  let connection = Client::connect(address.as_str(), ConnectionProperties::default())
-    .wait()
-    .expect("connection error");
-
-  let channel = connection
-    .create_channel()
-    .wait()
-    .expect("channel could not be created");
-
-  println!("connection successfully established");
-
-  channel
-    .exchange_declare(
-      exchange,
-      ExchangeKind::Fanout,
-      ExchangeDeclareOptions::default(),
-      FieldTable::default(),
-    )
-    .wait()
-    .expect("could not create exchange");
-
-  println!("exchange successfully created");
-
-  print!("sending flats ");
+fn send_results(session: &ServiceSession, results: Vec<Property>) {
+  print!("sending flats ...");
   for flat in results {
-    channel
-      .basic_publish(
-        exchange,
-        &format!("flats_{:?}", flat.city),
-        serde_json::to_string(&flat).unwrap().as_bytes().to_vec(),
-        BasicPublishOptions::default(),
-        BasicProperties::default(),
-      )
-      .wait()
-      .expect("could not send flat!");
-    print!(".");
+    let id = flat.data.as_ref().map(|x| x.externalid.to_owned());
+    let document_id = id.map(|x| format!("{}-{}", flat.source, x));
+    let result = documents::write(session, "flats", document_id, &flat, documents::WriteOptions::default());
+    match result.err() {
+      Some(error) => println!("ERROR: {:?}!", error),
+      None => print!(".")
+    }
   }
   println!();
-
-  println!("sending flats complete.");
 }

@@ -3,7 +3,7 @@ extern crate reqwest;
 extern crate std;
 
 use super::{Crawler, Error};
-use crate::models::FlatData;
+use crate::models::{PropertyData, PropertyType, ContractType};
 use kuchiki::{ElementData, NodeDataRef};
 
 pub struct WGGesucht {}
@@ -17,7 +17,7 @@ impl Crawler for WGGesucht {
     "tr[adid^=wohnungen]"
   }
 
-  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error> {
+  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<PropertyData, Error> {
     let only_limited = Self::get_text(&result, ".ang_spalte_freibis")?.trim().len() > 0;
     if only_limited {
       Err(Error {
@@ -33,13 +33,15 @@ impl Crawler for WGGesucht {
           .replace("\n", "")
           .trim();
       let externalid = Self::get_attr(&result, None, "adid")?;
-      Ok(FlatData {
-        rent: Self::parse_number(rent)?,
+      Ok(PropertyData {
+        price: Self::parse_number(rent)?,
         squaremeters: Self::parse_number(squaremeters)?,
         address,
         title,
         rooms: Self::parse_number(rooms)?,
         externalid,
+        property_type: PropertyType::Flat,
+        contract_type: ContractType::Rent,
       })
     }
   }

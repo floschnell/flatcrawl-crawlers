@@ -5,7 +5,7 @@ extern crate reqwest;
 extern crate std;
 
 use self::regex::Regex;
-use crate::models::FlatData;
+use crate::models::PropertyData;
 use kuchiki::{ElementData, NodeDataRef};
 use std::ops::Deref;
 
@@ -27,7 +27,7 @@ pub trait Crawler: Send + Sync {
 
   fn selector(&self) -> &'static str;
 
-  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error>;
+  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<PropertyData, Error>;
 
   fn get_attr(
     element: &NodeDataRef<ElementData>,

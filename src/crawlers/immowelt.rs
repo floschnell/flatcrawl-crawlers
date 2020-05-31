@@ -4,7 +4,7 @@ extern crate reqwest;
 extern crate std;
 
 use super::{Crawler, Error};
-use crate::models::FlatData;
+use crate::models::{PropertyData, PropertyType, ContractType};
 use kuchiki::{ElementData, NodeDataRef};
 
 pub struct ImmoWelt {
@@ -28,7 +28,7 @@ impl Crawler for ImmoWelt {
     ".js-object[data-estateid]"
   }
 
-  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error> {
+  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<PropertyData, Error> {
     let rent = Self::get_text(&result, ".hardfacts_3 .hardfact:nth-child(1) strong")?;
     let squaremeters = Self::get_text(&result, ".hardfacts_3 .hardfact:nth-child(2)")?;
     let rooms = Self::get_text(&result, ".hardfacts_3 .hardfact:nth-child(3)")?;
@@ -41,13 +41,15 @@ impl Crawler for ImmoWelt {
       .join(", ");
     let cleaned_address = self.brackets.replace_all(&address, "").into_owned();
     let externalid = Self::get_attr(&result, None, "data-estateid")?;
-    Ok(FlatData {
-      rent: Self::parse_number(rent)?,
+    Ok(PropertyData {
+      price: Self::parse_number(rent)?,
       squaremeters: Self::parse_number(squaremeters)?,
       address: cleaned_address,
       title,
       rooms: Self::parse_number(rooms)?,
       externalid,
+      property_type: PropertyType::Flat,
+      contract_type: ContractType::Rent,
     })
   }
 }

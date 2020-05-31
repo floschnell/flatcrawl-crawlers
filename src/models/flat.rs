@@ -5,6 +5,18 @@ use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum PropertyType {
+  House,
+  Flat
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ContractType {
+  Rent,
+  Buy
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Location {
   pub latitude: f32,
   pub longitude: f32,
@@ -12,17 +24,21 @@ pub struct Location {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Flat {
+pub struct Property {
   pub source: String,
   pub date: i64,
   pub city: City,
-  pub data: Option<FlatData>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub data: Option<PropertyData>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub location: Option<Location>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FlatData {
-  pub rent: f32,
+pub struct PropertyData {
+  pub price: f32,
+  pub contract_type: ContractType,
+  pub property_type: PropertyType,
   pub squaremeters: f32,
   pub address: String,
   pub title: String,
@@ -30,7 +46,7 @@ pub struct FlatData {
   pub rooms: f32,
 }
 
-impl PartialEq for Flat {
+impl PartialEq for Property {
   fn eq(&self, other: &Self) -> bool {
     (self.city == other.city
       && self.source == other.source
@@ -41,7 +57,7 @@ impl PartialEq for Flat {
   }
 }
 
-impl Flat {
+impl Property {
   fn is_equal_to(&self, other: &Self) -> bool {
     let special_characters_regex = Regex::new("[^0-9a-zA-Z]+").unwrap();
     self.city == other.city
@@ -55,8 +71,8 @@ impl Flat {
       }
   }
 
-  pub fn new(source: String, city: City) -> Flat {
-    Flat {
+  pub fn new(source: String, city: City) -> Property {
+    Property {
       date: Utc::now().timestamp(),
       source,
       data: None,
@@ -65,8 +81,8 @@ impl Flat {
     }
   }
 
-  pub fn fill(&self, data: &FlatData) -> Flat {
-    Flat {
+  pub fn fill(&self, data: &PropertyData) -> Property {
+    Property {
       city: self.city.clone(),
       source: self.source.to_owned(),
       date: self.date,
@@ -75,8 +91,8 @@ impl Flat {
     }
   }
 
-  pub fn locate(&self, coord: &Coordinate, uncertainty: f32) -> Flat {
-    Flat {
+  pub fn locate(&self, coord: &Coordinate, uncertainty: f32) -> Property {
+    Property {
       city: self.city.clone(),
       source: self.source.to_owned(),
       date: self.date,
@@ -93,12 +109,14 @@ impl Flat {
 #[cfg(test)]
 mod tests {
   use crate::models::City;
-  use crate::models::Flat;
-  use crate::models::FlatData;
+  use crate::models::Property;
+  use crate::models::PropertyData;
+  use crate::models::PropertyType;
+  use crate::models::ContractType;
 
   #[test]
   fn compare_flat_too_simple() {
-    let flat_a = Flat {
+    let flat_a = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
@@ -106,7 +124,7 @@ mod tests {
       location: None,
     };
 
-    let flat_b = Flat {
+    let flat_b = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
@@ -119,32 +137,36 @@ mod tests {
 
   #[test]
   fn compare_flat_simple() {
-    let flat_a = Flat {
+    let flat_a = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 100.,
+      data: Some(PropertyData {
+        price: 100.,
         squaremeters: 100.,
         address: String::from("Some address"),
         title: String::from("This is some title"),
         externalid: String::from("1"),
         rooms: 3.,
+        contract_type: ContractType::Rent,
+        property_type: PropertyType::Flat,
       }),
       location: None,
     };
 
-    let flat_b = Flat {
+    let flat_b = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 100.,
+      data: Some(PropertyData {
+        price: 100.,
         squaremeters: 100.,
         address: String::from("This is some other address"),
         title: String::from("This is some other title"),
         externalid: String::from("1"),
         rooms: 1.,
+        contract_type: ContractType::Rent,
+        property_type: PropertyType::Flat,
       }),
       location: None,
     };
@@ -154,32 +176,36 @@ mod tests {
 
   #[test]
   fn compare_flat_complex() {
-    let flat_a = Flat {
+    let flat_a = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 100.,
+      data: Some(PropertyData {
+        price: 100.,
         squaremeters: 100.,
         address: String::from("Some address"),
         title: String::from("This is some title"),
         externalid: String::from("1a"),
         rooms: 3.,
+        contract_type: ContractType::Rent,
+        property_type: PropertyType::Flat,
       }),
       location: None,
     };
 
-    let flat_b = Flat {
+    let flat_b = Property {
       source: String::from("some source B"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 100.,
+      data: Some(PropertyData {
+        price: 100.,
         squaremeters: 100.,
         address: String::from("Some address"),
         title: String::from("This is some title"),
         externalid: String::from("1b"),
         rooms: 3.,
+        contract_type: ContractType::Rent,
+        property_type: PropertyType::Flat,
       }),
       location: None,
     };
@@ -189,32 +215,36 @@ mod tests {
 
   #[test]
   fn compare_flat_complex_special_chars() {
-    let flat_a = Flat {
+    let flat_a = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 100.,
+      data: Some(PropertyData {
+        price: 100.,
         squaremeters: 100.,
         address: String::from("Some address"),
         title: String::from("This is% some title!"),
         externalid: String::from("1a"),
         rooms: 3.,
+        contract_type: ContractType::Rent,
+        property_type: PropertyType::Flat,
       }),
       location: None,
     };
 
-    let flat_b = Flat {
+    let flat_b = Property {
       source: String::from("some source B"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 101.,
+      data: Some(PropertyData {
+        price: 101.,
         squaremeters: 101.,
         address: String::from("Some other address"),
         title: String::from("This is some title"),
         externalid: String::from("1b"),
         rooms: 3.5,
+        contract_type: ContractType::Rent,
+        property_type: PropertyType::Flat,
       }),
       location: None,
     };
@@ -224,7 +254,7 @@ mod tests {
 
   #[test]
   fn compare_flat_not_equal() {
-    let flat_a = Flat {
+    let flat_a = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
@@ -232,7 +262,7 @@ mod tests {
       location: None,
     };
 
-    let flat_b = Flat {
+    let flat_b = Property {
       source: String::from("some source B"),
       city: City::Munich,
       date: 0,
@@ -245,32 +275,36 @@ mod tests {
 
   #[test]
   fn compare_flat_complex_not_equal() {
-    let flat_a = Flat {
+    let flat_a = Property {
       source: String::from("some source A"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 100.,
+      data: Some(PropertyData {
+        price: 100.,
         squaremeters: 100.,
         address: String::from("Some address"),
         title: String::from("This is% some title!"),
         externalid: String::from("1a"),
         rooms: 3.,
+        contract_type: ContractType::Buy,
+        property_type: PropertyType::House,
       }),
       location: None,
     };
 
-    let flat_b = Flat {
+    let flat_b = Property {
       source: String::from("some source B"),
       city: City::Munich,
       date: 0,
-      data: Some(FlatData {
-        rent: 101.,
+      data: Some(PropertyData {
+        price: 101.,
         squaremeters: 101.,
         address: String::from("Some other address"),
         title: String::from("This is some other title"),
         externalid: String::from("1b"),
         rooms: 3.5,
+        contract_type: ContractType::Buy,
+        property_type: PropertyType::House,
       }),
       location: None,
     };

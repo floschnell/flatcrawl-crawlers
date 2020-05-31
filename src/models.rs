@@ -4,6 +4,8 @@ mod flat;
 
 pub use self::city::City;
 pub use self::encodings::Encoding;
-pub use self::flat::Flat;
-pub use self::flat::FlatData;
+pub use self::flat::Property;
+pub use self::flat::PropertyData;
 pub use self::flat::Location;
+pub use self::flat::PropertyType;
+pub use self::flat::ContractType;

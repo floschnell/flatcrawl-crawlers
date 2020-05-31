@@ -3,7 +3,7 @@ extern crate reqwest;
 extern crate std;
 
 use super::{Crawler, Error};
-use crate::models::FlatData;
+use crate::models::{PropertyData, PropertyType, ContractType};
 use kuchiki::{ElementData, NodeDataRef};
 
 impl From<()> for Error {
@@ -25,7 +25,7 @@ impl Crawler for Wohnungsboerse {
     ".search_result_entry[class*='estate_']"
   }
 
-  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<FlatData, Error> {
+  fn transform_result(&self, result: NodeDataRef<ElementData>) -> Result<PropertyData, Error> {
     let title = Self::get_text(&result, ".search_result_entry-headline")?
       .trim()
       .to_string();
@@ -51,13 +51,15 @@ impl Crawler for Wohnungsboerse {
     let externalid_opt = link.rsplit("/").next();
 
     match externalid_opt {
-      Some(externalid) => Ok(FlatData {
-        rent: Self::parse_number(price)?,
+      Some(externalid) => Ok(PropertyData {
+        price: Self::parse_number(price)?,
         squaremeters: Self::parse_number(squaremeters)?,
         address,
         title,
         rooms: Self::parse_number(rooms)?,
         externalid: externalid.to_string(),
+        property_type: PropertyType::Flat,
+        contract_type: ContractType::Rent,
       }),
       None => Err(Error {
         message: "Could not find an external id".to_string(),

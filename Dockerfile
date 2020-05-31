@@ -1,4 +1,4 @@
-FROM rust:1.37 as build
+FROM rust:1.43 as build
 
 COPY src /opt/flatcrawl/src
 COPY Cargo.toml /opt/flatcrawl

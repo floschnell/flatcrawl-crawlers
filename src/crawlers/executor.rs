@@ -5,7 +5,7 @@ extern crate reqwest;
 extern crate std;
 
 use crate::crawlers::{Config, Crawler, Error as CrawlingError};
-use crate::models::{Encoding, Flat};
+use crate::models::{Encoding, Property};
 use kuchiki::iter::*;
 use kuchiki::traits::*;
 use reqwest::Response;
@@ -40,12 +40,12 @@ impl From<reqwest::Error> for Error {
   }
 }
 
-pub fn execute(config: &Config, crawler: &Box<dyn Crawler>) -> Result<Vec<Flat>, Error> {
+pub fn execute(config: &Config, crawler: &Box<dyn Crawler>) -> Result<Vec<Property>, Error> {
   let results = get_results(config, crawler)?;
-  let mut successful: Vec<Flat> = Vec::new();
-  let flat_results: Vec<Result<Flat, Error>> = results
+  let mut successful: Vec<Property> = Vec::new();
+  let flat_results: Vec<Result<Property, Error>> = results
     .map(|result| {
-      let flat = Flat::new(crawler.name().to_owned(), config.city.clone());
+      let flat = Property::new(crawler.name().to_owned(), config.city.clone());
       let data = crawler.transform_result(result)?;
       Ok(flat.fill(&data))
     })

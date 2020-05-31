@@ -9,6 +9,8 @@ mod wohnungsboerse;
 
 use crate::models::City;
 use crate::models::Encoding;
+use crate::models::ContractType;
+use crate::models::PropertyType;
 
 pub use crate::crawlers::config::Config;
 pub use crate::crawlers::crawler::Crawler;
@@ -21,7 +23,8 @@ pub use crate::crawlers::wggesucht::WGGesucht;
 pub use crate::crawlers::wohnungsboerse::Wohnungsboerse;
 
 pub enum CrawlerImpl {
-  ImmoScout,
+  ImmoScoutRentApartments,
+  ImmoScoutBuyHouses,
   ImmoWelt,
   Sueddeutsche,
   WGGesucht,
@@ -33,7 +36,8 @@ pub fn get_crawler(crawler_impl: &CrawlerImpl) -> Result<Box<dyn Crawler>, Error
     CrawlerImpl::ImmoWelt => Ok(Box::new(ImmoWelt::new())),
     CrawlerImpl::WGGesucht => Ok(Box::new(WGGesucht {})),
     CrawlerImpl::Sueddeutsche => Ok(Box::new(Sueddeutsche::new())),
-    CrawlerImpl::ImmoScout => Ok(Box::new(ImmoScout {})),
+    CrawlerImpl::ImmoScoutRentApartments => Ok(Box::new(ImmoScout { contract_type: ContractType::Rent, property_type: PropertyType::Flat })),
+    CrawlerImpl::ImmoScoutBuyHouses => Ok(Box::new(ImmoScout { contract_type: ContractType::Buy, property_type: PropertyType::House })),
     CrawlerImpl::Wohnungsboerse => Ok(Box::new(Wohnungsboerse {})),
   }
 }
@@ -42,13 +46,23 @@ pub fn get_crawler_configs() -> Vec<Config> {
   let mut configs: Vec<Config> = Vec::new();
 
   // Immobilienscout24 ------------------------------------------------
+
+  // Lindenberg
+  configs.push(Config {
+    city: City::Lindenberg,
+    host: "www.immobilienscout24.de",
+    path: "/Suche/de/bayern/lindau-bodensee-kreis/lindenberg-im-allgaeu/haus-kaufen",
+    encoding: Encoding::Utf8,
+    crawler: CrawlerImpl::ImmoScoutBuyHouses,
+  });
+
   // München
   configs.push(Config {
     city: City::Munich,
     host: "www.immobilienscout24.de",
     path: "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Muenchen?pagerReporting=true",
     encoding: Encoding::Utf8,
-    crawler: CrawlerImpl::ImmoScout,
+    crawler: CrawlerImpl::ImmoScoutRentApartments,
   });
 
   // Würzburg
@@ -57,7 +71,7 @@ pub fn get_crawler_configs() -> Vec<Config> {
     host: "www.immobilienscout24.de",
     path: "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Wuerzburg?pagerReporting=true",
     encoding: Encoding::Utf8,
-    crawler: CrawlerImpl::ImmoScout,
+    crawler: CrawlerImpl::ImmoScoutRentApartments,
   });
 
   // Augsburg
@@ -66,7 +80,7 @@ pub fn get_crawler_configs() -> Vec<Config> {
     host: "www.immobilienscout24.de",
     path: "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Augsburg?pagerReporting=true",
     encoding: Encoding::Utf8,
-    crawler: CrawlerImpl::ImmoScout,
+    crawler: CrawlerImpl::ImmoScoutRentApartments,
   });
 
   // Kempten
@@ -75,7 +89,7 @@ pub fn get_crawler_configs() -> Vec<Config> {
     host: "www.immobilienscout24.de",
     path: "/Suche/S-2/P-1/Wohnung-Miete/Bayern/Kempten-Allgaeu?pagerReporting=true",
     encoding: Encoding::Utf8,
-    crawler: CrawlerImpl::ImmoScout,
+    crawler: CrawlerImpl::ImmoScoutRentApartments,
   });
 
   // ImmoWelt ------------------------------------------------
